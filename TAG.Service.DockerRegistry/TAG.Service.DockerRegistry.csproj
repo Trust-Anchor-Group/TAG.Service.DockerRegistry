@@ -22,31 +22,31 @@
 
 	<ItemGroup>
 		<Content Include="Root\DockerRegistry\Docker.js">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\DockerOrganization.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\DockerOrganizations.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\DockerRepository.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\DockerStorage.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\DockerUser.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\DockerUsers.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\Repositories.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\Settings.md">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\Sniffers\Sniffer.md">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -58,7 +58,7 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Root\DockerRegistry\Style.cssx">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="TAG.Service.DockerRegistry.manifest">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -66,11 +66,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Waher.IoTGateway" Version="3.6.0" />
+		<PackageReference Include="Waher.Runtime.Timing" Version="2.1.1" />
+		<PackageReference Include="Waher.Security" Version="1.2.0" />
+		<PackageReference Include="Waher.Security.Users" Version="1.3.3" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<!-- TODO: ask if i should use package reference -->
-		<ProjectReference Include="..\..\iotbroker\Waher.Service.IoTBroker\Waher.Service.IoTBroker.csproj" />
 		<ProjectReference Include="..\TAG.Networking.DockerRegistry\TAG.Networking.DockerRegistry.csproj" />
 		<ProjectReference Include="..\TAG.Service.DockerRegistry.Script\TAG.Service.DockerRegistry.Script.csproj" />
 	</ItemGroup>

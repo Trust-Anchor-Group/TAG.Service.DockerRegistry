@@ -8,7 +8,6 @@ using Waher.Script.Exceptions;
 using Waher.Script.Model;
 using Waher.Script.Objects;
 using Waher.Security;
-using Waher.Service.IoTBroker.Legal.MFA;
 
 namespace TAG.Service.DockerRegistry.Script
 {

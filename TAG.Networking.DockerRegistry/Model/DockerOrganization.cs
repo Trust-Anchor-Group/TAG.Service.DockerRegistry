@@ -25,6 +25,7 @@ namespace TAG.Networking.DockerRegistry.Model
         // TODO: Fine grain permissions
         public async Task<bool> IsAuthorized(IUser User, string Privilege)
         {
+            
             if (User.HasPrivilege(DashboardPrivileges.Admin))
                 return true;
 

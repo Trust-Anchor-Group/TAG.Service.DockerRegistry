@@ -15,8 +15,6 @@ using Waher.Runtime.Inventory;
 using Waher.Runtime.Timing;
 using Waher.Security.JWT;
 using Waher.Security.Users;
-using Waher.Service.IoTBroker;
-using Waher.Service.IoTBroker.DataStorage;
 
 namespace TAG.Service.DockerRegistry
 {

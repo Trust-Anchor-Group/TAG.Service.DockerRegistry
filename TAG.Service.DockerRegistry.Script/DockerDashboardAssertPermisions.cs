@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using TAG.Networking.DockerRegistry.Model;
 using Waher.Networking.HTTP;
-using Waher.Networking.XMPP.Contracts;
 using Waher.Persistence;
 using Waher.Script;
 using Waher.Script.Abstraction.Elements;
@@ -10,8 +9,6 @@ using Waher.Script.Exceptions;
 using Waher.Script.Model;
 using Waher.Script.Objects;
 using Waher.Security;
-using Waher.Security.Users;
-using Waher.Service.IoTBroker.Legal.MFA;
 
 namespace TAG.Service.DockerRegistry.Script
 {

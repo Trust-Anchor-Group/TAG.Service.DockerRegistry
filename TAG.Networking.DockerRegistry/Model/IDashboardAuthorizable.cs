@@ -1,10 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Security;
-using Waher.Security.Users;
-using Waher.Service.IoTBroker.Legal.Identity;
-using Waher.Service.IoTBroker.Legal.MFA;
 
 namespace TAG.Networking.DockerRegistry.Model
 {
@@ -20,10 +18,11 @@ namespace TAG.Networking.DockerRegistry.Model
 
         public static async Task<CaseInsensitiveString> GetUsersOrganizationName(IUser User)
         {
-            if (User is QuickLoginUser QuickLoginUser)
+            if (User is ILegalIdentityUser LegalIdUser)
             {
-                if (QuickLoginUser.Properties.TryGetValue("ORGNAME", out object OrgnNmeObj) && OrgnNmeObj is string OrgName)
-                    return OrgName;
+                ILegalIdentityProperty Property = Array.Find(LegalIdUser.LegalIdentity.Properties, p => p.Name == "ORGNAME");
+                if (!(Property is null))
+                    return Property.Value;
             }
             else if (User is User AdminUser)
             {

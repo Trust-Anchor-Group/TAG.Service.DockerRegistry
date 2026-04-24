@@ -5,13 +5,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Waher.Content" Version="3.4.1" />
-		<PackageReference Include="Waher.Persistence" Version="1.16.0" />
-		<PackageReference Include="Waher.Networking" Version="4.5.3" />
-		<PackageReference Include="Waher.Networking.HTTP" Version="4.5.2" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\..\iotbroker\Waher.Service.IoTBroker\Waher.Service.IoTBroker.csproj" />
+		<PackageReference Include="Waher.Content" Version="3.4.7" />
+		<PackageReference Include="Waher.Networking.SASL" Version="2.1.3" />
+		<PackageReference Include="Waher.Persistence" Version="1.19.0" />
+		<PackageReference Include="Waher.Networking" Version="4.6.5" />
+		<PackageReference Include="Waher.Networking.HTTP" Version="4.6.1" />
+		<PackageReference Include="Waher.Security" Version="1.2.0" />
+		<PackageReference Include="Waher.IoTGateway" Version="3.6.0" />
 	</ItemGroup>
 </Project>

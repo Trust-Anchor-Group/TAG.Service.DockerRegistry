@@ -8,7 +8,6 @@ using Waher.Persistence.Attributes;
 using Waher.Persistence.Filters;
 using Waher.Runtime.Inventory;
 using Waher.Security;
-using Waher.Security.Users;
 namespace TAG.Networking.DockerRegistry.Model
 {
     [CollectionName("DockerStorage")]

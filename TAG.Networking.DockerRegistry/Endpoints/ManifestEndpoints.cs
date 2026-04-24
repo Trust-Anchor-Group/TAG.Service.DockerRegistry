@@ -13,7 +13,6 @@ using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Security;
 using Waher.Security.LoginMonitor;
-using Waher.Service.IoTBroker.MultiUserChat.Affiliations;
 
 namespace TAG.Networking.DockerRegistry.Endpoints
 {

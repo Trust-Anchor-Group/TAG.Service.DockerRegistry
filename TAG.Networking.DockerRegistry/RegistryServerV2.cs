@@ -17,7 +17,8 @@ using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Runtime.Threading;
 using Waher.Script;
-using Waher.Service.IoTBroker.DataStorage;
+using Waher.Script.Functions.Vectors;
+using Waher.Security;
 
 namespace TAG.Networking.DockerRegistry
 {
@@ -473,34 +474,43 @@ namespace TAG.Networking.DockerRegistry
         }
 
         #region Docker Data Retrival
-        private async Task<DockerUser> GetDockerUser(Account Account)
+        private Task<DockerUser> GetDockerUser(IUser User)
         {
-            DockerUser User = await Database.FindFirstIgnoreRest<DockerUser>(new FilterAnd(new FilterFieldEqualTo("AccountName", Account.UserName)));
-            return User;
+            return Database.FindFirstIgnoreRest<DockerUser>(new FilterAnd(new FilterFieldEqualTo("AccountName", User.UserName)));
         }
 
-        private async Task<DockerOrganization> GetOrganizationActor(Account Account)
+        private Task<DockerOrganization> GetOrganizationActor(ILegalIdentityUser LegalId)
         {
-            DockerOrganization Org = await Database.FindFirstIgnoreRest<DockerOrganization>(new FilterAnd(new FilterFieldEqualTo("OrganizationName", Account.OrgName)));
-            return Org;
+            string OrgName = "";
+
+            foreach (ILegalIdentityProperty Property in LegalId.LegalIdentity.Properties)
+            {
+                if (Property.Name == "ORGNAME")
+                {
+                    OrgName = Property.Value;
+                }
+            }
+
+            return Database.FindFirstIgnoreRest<DockerOrganization>(new FilterAnd(new FilterFieldEqualTo("OrganizationName", OrgName)));
         }
 
         private async Task<DockerActor[]> GetActors(HttpRequest Request)
         {
-            if (!(Request.User is AccountUser AccountUser))
+            if (!(Request.User is null))
                 throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Requested access to the resource is denied."), apiHeader);
-
-            Account Account = AccountUser.Account;
 
             List<DockerActor> Actors = new List<DockerActor>();
 
-            DockerUser User = await GetDockerUser(Account);
+            DockerUser User = await GetDockerUser(Request.User);
             if (!(User is null))
                 Actors.Add(User);
 
-            DockerOrganization Organization = await GetOrganizationActor(Account);
-            if (!(Organization is null))
-                Actors.Add(Organization);
+            if (Request.User is ILegalIdentityUser LegalIdentityUser)
+            {
+                DockerOrganization Organization = await GetOrganizationActor(LegalIdentityUser);
+                if (!(Organization is null))
+                    Actors.Add(Organization);
+            }
 
             return Actors.ToArray();
         }

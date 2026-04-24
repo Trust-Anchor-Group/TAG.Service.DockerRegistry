@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Waher.Persistence;
 using Waher.Persistence.Attributes;
 using Waher.Security;
-using Waher.Security.Users;
 
 namespace TAG.Networking.DockerRegistry.Model
 {

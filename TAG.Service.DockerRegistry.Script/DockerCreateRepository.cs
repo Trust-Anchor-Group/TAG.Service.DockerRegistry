@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TAG.Networking.DockerRegistry.Model;
-using Waher.Content.Markdown.Model.SpanElements;
 using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Script;
@@ -10,7 +9,6 @@ using Waher.Script.Abstraction.Elements;
 using Waher.Script.Exceptions;
 using Waher.Script.Model;
 using Waher.Script.Objects;
-using Waher.Script.Persistence.Functions;
 
 namespace TAG.Service.DockerRegistry.Script
 {
