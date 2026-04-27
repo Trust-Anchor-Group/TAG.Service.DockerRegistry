@@ -69,8 +69,8 @@ namespace TAG.Service.DockerRegistry
             if (!(Gateway.HttpServer is null) && Gateway.HttpServer.ClientCertificates != ClientCertificates.NotUsed)
                 Schemes.Add(new MutualTlsAuthentication(Users.Source));
 
-            PersistenceLayer PersistanceLayer = XmppServerModule.PersistenceLayer ?? new PersistenceLayer();
-            Schemes.Add(new BasicAuthentication(RequireEncryption, MinSecurityStrength, Gateway.Domain, new Accounts(PersistanceLayer)));
+            Schemes.Add(new BasicAuthentication(Gateway.Domain, Users.Source));
+
             Schemes.Add(new DigestAuthentication(RequireEncryption, MinSecurityStrength, DigestAlgorithm.MD5, Gateway.Domain, Users.Source));
             Schemes.Add(new DigestAuthentication(RequireEncryption, MinSecurityStrength, DigestAlgorithm.SHA256, Gateway.Domain, Users.Source));
             Schemes.Add(new DigestAuthentication(RequireEncryption, MinSecurityStrength, DigestAlgorithm.SHA3_256, Gateway.Domain, Users.Source));

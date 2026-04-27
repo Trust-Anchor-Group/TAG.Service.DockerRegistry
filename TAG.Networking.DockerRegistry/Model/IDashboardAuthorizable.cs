@@ -24,17 +24,7 @@ namespace TAG.Networking.DockerRegistry.Model
                 if (!(Property is null))
                     return Property.Value;
             }
-            else if (User is User AdminUser)
-            {
-                LegalIdentity Id = await Database.FindFirstIgnoreRest<LegalIdentity>(new FilterAnd(new FilterFieldEqualTo("Id", AdminUser.LegalId)));
-                if (!(Id is null))
-                {
-                    CaseInsensitiveString OrgName = Id["ORGNAME"];
-                    if (!CaseInsensitiveString.IsNullOrEmpty(OrgName))
-                        return OrgName;
-                }
-            }
-
+            
             return null;
         }
     }

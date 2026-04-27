@@ -8,9 +8,6 @@ using Waher.Networking.HTTP;
 using Waher.Networking.Sniffers;
 using Waher.Persistence;
 using Waher.Runtime.Cache;
-using Waher.Runtime.Threading;
-using static TAG.Networking.DockerRegistry.Model.DockerActor;
-
 
 namespace TAG.Networking.DockerRegistry.Endpoints
 {

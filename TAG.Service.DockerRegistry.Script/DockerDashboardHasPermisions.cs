@@ -63,7 +63,7 @@ namespace TAG.Service.DockerRegistry.Script
 
             IUser User = null;
 
-            if ((Variables.TryGetVariable("QuickLoginUser", out Variable QuickLoginUserVariable) && QuickLoginUserVariable.ValueElement.AssociatedObjectValue is QuickLoginUser QuickLoginUser))
+            if ((Variables.TryGetVariable("QuickLoginUser", out Variable QuickLoginUserVariable) && QuickLoginUserVariable.ValueElement.AssociatedObjectValue is IUser QuickLoginUser))
                 User = QuickLoginUser;
             else if (Variables.TryGetVariable("User", out Variable UserVariable) && UserVariable.ValueObject is IUser IUser)
                 User = IUser;

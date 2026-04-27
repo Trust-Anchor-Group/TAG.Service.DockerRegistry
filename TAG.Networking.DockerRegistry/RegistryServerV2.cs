@@ -496,7 +496,7 @@ namespace TAG.Networking.DockerRegistry
 
         private async Task<DockerActor[]> GetActors(HttpRequest Request)
         {
-            if (!(Request.User is null))
+            if (Request.User is null)
                 throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Requested access to the resource is denied."), apiHeader);
 
             List<DockerActor> Actors = new List<DockerActor>();
