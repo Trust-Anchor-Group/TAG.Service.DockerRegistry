@@ -66,16 +66,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Waher.IoTGateway" Version="3.6.1" />
+		<PackageReference Include="Waher.IoTGateway" Version="3.7.0" />
 		<PackageReference Include="Waher.Runtime.Timing" Version="2.1.1" />
 		<PackageReference Include="Waher.Security" Version="1.2.0" />
 		<PackageReference Include="Waher.Security.Users" Version="1.3.3" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<!-- TODO: ask if i should use package reference -->
-		<ProjectReference Include="..\TAG.Networking.DockerRegistry\TAG.Networking.DockerRegistry.csproj" />
-		<ProjectReference Include="..\TAG.Service.DockerRegistry.Script\TAG.Service.DockerRegistry.Script.csproj" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
