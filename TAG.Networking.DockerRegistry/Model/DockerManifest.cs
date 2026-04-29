@@ -47,7 +47,9 @@ namespace TAG.Networking.DockerRegistry.Model
                 return Size;
             }
 
-            throw new Exception($"Cannot get size of {this.GetType().FullName}");
+            return 0;
         }
+
+
     }
 }

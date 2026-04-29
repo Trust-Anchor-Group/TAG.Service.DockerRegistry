@@ -1,11 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Waher.Events;
+using Waher.IoTGateway.WebResources;
 using Waher.Persistence;
 using Waher.Persistence.Attributes;
 using Waher.Persistence.Filters;
 using Waher.Security;
+using Waher.Security.WAF.Model.Runtime;
 
 namespace TAG.Networking.DockerRegistry.Model
 {
@@ -91,6 +96,53 @@ namespace TAG.Networking.DockerRegistry.Model
                 return await Org.IsAuthorized(User, Privilege);
 
             return false;
+        }
+
+        public async Task<ReferencedManifest[]> GetManifests()
+        {
+            IEnumerable<ImageReference> References = await Database.Find<ImageReference>(new FilterAnd(
+                new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), RepositoryName)
+            ));
+
+            HashSet<HashDigest> Digests = References.Select(x => x.Digest).ToHashSet<HashDigest>();
+
+            FilterFieldEqualTo[] Filters = Digests.Select(d => new FilterFieldEqualTo(nameof(DockerManifest.Digest), d)).ToArray();
+            DockerManifest[] Manifests = (await Database.Find<DockerManifest>(new FilterOr(Filters))).ToArray();
+
+            List<ReferencedManifest> Result = References.Select(Reference => new ReferencedManifest()
+            {
+                Manifest = Array.Find(Manifests, m => m.Digest == Reference.Digest)?.Manifest,
+                Size = Array.Find(Manifests, m => m.Digest == Reference.Digest)?.GetSize() ?? 0,
+                RepositoryName = Reference.RepositoryName,
+                Tag = Reference.Tag,
+                Digest = Reference.Digest
+            }).ToList();
+
+            HashSet<HashDigest> Referenced = new HashSet<HashDigest>();
+            foreach (IIndexManifest Index in Manifests.Where(x => x.Manifest is IIndexManifest)
+               .Select(x => x.Manifest)
+               .Cast<IIndexManifest>())
+            {
+                foreach(IContentDescriptor Descriptor in Index.GetManifests())
+                {
+                    Referenced.Add(Descriptor.Digest);
+                }
+            }
+
+
+            Filters = Referenced.Select(d => new FilterFieldEqualTo(nameof(DockerManifest.Digest), d)).ToArray();
+            Manifests = (await Database.Find<DockerManifest>(new FilterOr(Filters))).ToArray();
+
+            Result.AddRange(Manifests.Select(Manifest => new ReferencedManifest()
+            {
+                Manifest = Manifest.Manifest,
+                Size = Manifest.GetSize(),
+                RepositoryName = this.RepositoryName,
+                Tag = "_",
+                Digest = Manifest.Digest
+            }));
+
+            return Result.ToArray();
         }
 
         public async Task<bool> HasPermission(DockerActor Actor, RepositoryAction Action)

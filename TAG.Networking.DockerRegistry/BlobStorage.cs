@@ -127,8 +127,9 @@ namespace TAG.Networking.DockerRegistry
             return Path.Combine(this.blobFolder, Hashes.BinaryToString(Digest.Hash) + ".bin");
         }
         public async Task<int> CleanUnusedBlobs()
-
         {
+            Log.Informational("Cleaning turned off");
+            return 0;
             Log.Informational("Cleaning unused Docker Registry blobs...");
             List<HashDigest> AllBlobDigests = (await Database.Find<DockerBlob>()).Select(Blob => Blob.Digest).ToList();
             AllBlobDigests.Sort();

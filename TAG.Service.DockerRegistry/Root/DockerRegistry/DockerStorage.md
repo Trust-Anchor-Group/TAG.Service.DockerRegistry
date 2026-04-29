@@ -15,7 +15,6 @@ Parameter: Guid
         NotFound("No storage with guid " + Guid);
     );
 
-
     if Exists(Posted) then (
         if Posted matches { "resync": Bool(PResync )} then (
             Authorize(User, "Administrator.DockerRegistry");

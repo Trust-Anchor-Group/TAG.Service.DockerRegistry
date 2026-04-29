@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Waher.Networking.XMPP.PubSub;
 using Waher.Persistence;
 using Waher.Persistence.Attributes;
 using Waher.Persistence.Filters;
@@ -46,35 +47,65 @@ namespace TAG.Networking.DockerRegistry.Model
         public async Task<WritableStorageHandle> GetWritableStorage()
         {
             Waher.Runtime.Threading.Semaphore Semaphore = await Semaphores.BeginWrite("DockerRegistry_StorageAffecting_" + Guid);
-            DockerStorage Storage = await Database.FindFirstIgnoreRest<DockerStorage>(new FilterAnd(new FilterFieldEqualTo("Guid", StorageGuid)));
+            DockerStorage Storage = await Database.FindFirstIgnoreRest<DockerStorage>(new FilterAnd(new FilterFieldEqualTo(nameof(DockerStorage.Guid), StorageGuid)));
             return new WritableStorageHandle(Storage, Semaphore);
         }
 
         public async Task<ReadOnlyStorageHandle> GetReadOnlyStorage()
         {
             Waher.Runtime.Threading.Semaphore Semaphore = await Semaphores.BeginRead("DockerRegistry_StorageAffecting_" + Guid);
-            DockerStorage Storage = await Database.FindFirstIgnoreRest<DockerStorage>(new FilterAnd(new FilterFieldEqualTo("Guid", StorageGuid)));
+            DockerStorage Storage = await Database.FindFirstIgnoreRest<DockerStorage>(new FilterAnd(new FilterFieldEqualTo(nameof(DockerStorage.Guid), StorageGuid)));
             return new ReadOnlyStorageHandle(Storage, Semaphore);
         }
 
         public async Task<DockerStorage> GetStorageNonBlocking()
         {
-            DockerStorage Storage = await Database.FindFirstIgnoreRest<DockerStorage>(new FilterAnd(new FilterFieldEqualTo("Guid", StorageGuid)));
+            DockerStorage Storage = await Database.FindFirstIgnoreRest<DockerStorage>(new FilterAnd(new FilterFieldEqualTo(nameof(DockerStorage.Guid), StorageGuid)));
             return Storage;
         }
 
-        public async Task<DockerManifest[]> FindOwnedImages()
+        public async Task<DockerManifest[]> FindReferencedManifests()
         {
             DockerRepository[] Repositories = (await Database.Find<DockerRepository>(new FilterAnd(new FilterFieldEqualTo("OwnerGuid", Guid)))).ToArray();
 
-            List<DockerManifest> DockerImages = new List<DockerManifest>();
+            FilterFieldEqualTo[] Filters;
+
+            HashSet<DockerManifest> Manifests = new HashSet<DockerManifest>();
             foreach (DockerRepository Repository in Repositories)
             {
-                DockerManifest[] Images = (await Database.Find<DockerManifest>(new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName))).ToArray();
-                DockerImages.AddRange(Images);
+                IEnumerable<ImageReference> References = await Database.Find<ImageReference>(new FilterAnd(
+                    new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName)
+                ));
+
+                HashSet<HashDigest> Digests = References.Select(x => x.Digest).ToHashSet<HashDigest>();
+
+                Filters = Digests.Select(d => new FilterFieldEqualTo(nameof(DockerManifest.Digest), d)).ToArray();
+                DockerManifest[] RepoManifests = (await Database.Find<DockerManifest>(new FilterOr(Filters))).ToArray();
+
+                foreach (DockerManifest m in RepoManifests)
+                    Manifests.Add(m);
             }
 
-            return DockerImages.ToArray();
+            HashSet<HashDigest> Referenced = new HashSet<HashDigest>();
+
+            foreach (DockerManifest m in Manifests)
+            {
+                if (m.Manifest is IIndexManifest Index)
+                {
+                    foreach (IContentDescriptor d in Index.GetManifests())
+                    {
+                        Referenced.Add(d.Digest);
+                    }
+                }
+            }
+
+            Filters = Referenced.Select(d => new FilterFieldEqualTo(nameof(DockerManifest.Digest), d)).ToArray();
+            DockerManifest[] Additional = (await Database.Find<DockerManifest>(new FilterOr(Filters))).ToArray();
+
+            foreach (DockerManifest m in Additional)
+                Manifests.Add(m);
+
+            return Manifests.ToArray();
         }
 
         public async Task ReSyncStorage()
@@ -83,7 +114,7 @@ namespace TAG.Networking.DockerRegistry.Model
             if (StorageHandle is null)
                 return;
 
-            IImageManifest[] Images = (await FindOwnedImages())
+            IImageManifest[] Images = (await this.FindReferencedManifests())
                 .Where(x => x.Manifest is IImageManifest)
                 .Select(x => x.Manifest)
                 .Cast<IImageManifest>()

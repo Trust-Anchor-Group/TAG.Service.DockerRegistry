@@ -123,7 +123,7 @@ StorageUsed: {{
 PrepareTable(()->
 (
 	Page.Order:="RepositoryName";
-	DockerOrganization.FindOwnedImages();
+	DockerOrganization.FindReferencedManifests();
 ));
 
 

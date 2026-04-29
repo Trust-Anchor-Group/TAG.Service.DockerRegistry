@@ -8,11 +8,9 @@ using Waher.Content;
 using Waher.Events;
 using Waher.Networking.HTTP;
 using Waher.Networking.Sniffers;
-using Waher.Networking.XMPP.PubSub;
 using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Security;
-using Waher.Security.LoginMonitor;
 
 namespace TAG.Networking.DockerRegistry.Endpoints
 {
@@ -166,16 +164,16 @@ namespace TAG.Networking.DockerRegistry.Endpoints
                     await Handle.Storage.UnregisterImage(ManifestImage);
                     throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Storage quota exceeded."), apiHeader);
                 }
-                
+
                 foreach (IImageLayer Layer in ManifestImage.GetLayers())
                 {
                     await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", Layer.Digest)));
                 }
+
+                await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", ManifestImage.GetConfig().Digest)));
             }
 
-
             await Database.Insert(NewManifest);
-            await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", NewManifest.Digest)));
 
 
             if (!string.IsNullOrEmpty(Tag))

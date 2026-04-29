@@ -136,7 +136,7 @@ if exists(Posted) then
 {{
 PrepareTable(()->(
     Page.Order:="Tag";
-    select * from DockerImage where RepositoryName=Repo.RepositoryName order by Tag;
+    Repo.GetManifests()
 ));
 }}
 
@@ -145,11 +145,10 @@ PrepareTable(()->(
 {{
 foreach Image in Page.Table do
 (
-    Size:=Image.GetSize();
     ]]| ((Image.RepositoryName)):((Image.Tag)) [[;
     ]]| ((Image.Tag)) [[;
     ]]| ((Image.Digest)) [[;
-    ]]| ((ToMetricBytes(Size);)) [[;
+    ]]| ((ToMetricBytes(Image.Size);)) [[;
     ]]| 
 [[;
 )

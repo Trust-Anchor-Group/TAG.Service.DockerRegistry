@@ -834,15 +834,11 @@ namespace TAG.Networking.DockerRegistry
             if (DanglingBlobs is null)
                 return;
 
-            Task[] tasks = new Task[DanglingBlobs.Length * 2];
-
             for (int i = 0; i < DanglingBlobs.Length; i++)
             {
-                tasks[i * 2] = Database.Delete(DanglingBlobs[i]);
-                tasks[i * 2 + i] = blobStorage.DeleteBlob(DanglingBlobs[i].Digest);
+                await Database.Delete(DanglingBlobs[i]);
+                await blobStorage.DeleteBlob(DanglingBlobs[i].Digest);
             }
-
-            Task.WaitAll(tasks);
         }
 
         /// <summary>
