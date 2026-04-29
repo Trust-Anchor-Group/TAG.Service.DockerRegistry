@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Waher.Security;
 
 namespace TAG.Networking.DockerRegistry.Model.OciImages
 {
@@ -11,9 +12,32 @@ namespace TAG.Networking.DockerRegistry.Model.OciImages
 		public string MediaType => MediaTypeValue;
 		public OciImageConfig Config { get; set; }
 		public OciImageLayer[] Layers { get; set; }
-		public byte[] Raw { get; set; }
+        private byte[] raw;
+        public byte[] Raw
+        {
+            get { return this.raw; }
+            set
+            {
+                this.digest = null;
+                this.raw = value;
+            }
+        }
 
-		public OCIImageManifest()
+        private HashDigest digest;
+
+        public HashDigest Digest
+        {
+            get
+            {
+                if (this.digest is null)
+                    this.digest = new HashDigest(HashFunction.SHA256, this.Raw);
+                return this.digest;
+            }
+
+            set { this.digest = value; }
+        }
+
+        public OCIImageManifest()
 		{
 		}
 

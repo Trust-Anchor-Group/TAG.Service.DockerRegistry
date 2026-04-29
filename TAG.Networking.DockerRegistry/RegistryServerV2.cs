@@ -175,7 +175,7 @@ namespace TAG.Networking.DockerRegistry
 
                 string Resource = Request.SubPath;
 
-                if (Resource == "/" || string.IsNullOrEmpty(Resource))  // API Version Check
+                if (Resource == "/" || string.IsNullOrEmpty(Resource))  // API Version Checkapplication/vnd.oci.image.manifest.v1+json
                 {
                     Response.StatusCode = 200;
                     await Response.SendResponse();
@@ -621,7 +621,7 @@ namespace TAG.Networking.DockerRegistry
                     int ci = i;
                     DeletionTasks[i] = Task.Run(async () =>
                     {
-                        await Database.FindDelete<DockerImage>(new FilterAnd(new FilterFieldEqualTo("RepositoryName", Repositories[ci].RepositoryName)));
+                        await Database.FindDelete<DockerManifest>(new FilterAnd(new FilterFieldEqualTo("RepositoryName", Repositories[ci].RepositoryName)));
                         await Database.Delete(Repositories[ci]);
                     });
                 }

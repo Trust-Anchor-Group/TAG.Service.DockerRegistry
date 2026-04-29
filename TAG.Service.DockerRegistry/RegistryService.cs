@@ -9,6 +9,7 @@ using Waher.IoTGateway.Setup;
 using Waher.Networking;
 using Waher.Networking.HTTP;
 using Waher.Networking.HTTP.Authentication;
+using Waher.Networking.XMPP.PubSub;
 using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Runtime.Inventory;
@@ -142,9 +143,9 @@ namespace TAG.Service.DockerRegistry
         public async Task OnRepositoryDeleted(DockerRepository Repository)
         {
             // delete all images
-            await Database.FindDelete<DockerImage>(new FilterAnd(new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName)));
+            await Database.FindDelete<ImageReference>(new FilterAnd(new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName)));
             // delete all privileges
-            await Database.FindDelete<DockerRepositoryPrivilege>(new FilterAnd(new FilterFieldEqualTo("RepositoryGuid", Repository.Guid)));
+            await Database.FindDelete<DockerRepositoryPrivilege>(new FilterAnd(new FilterFieldEqualTo(nameof(DockerRepositoryPrivilege.RepositoryGuid), Repository.Guid)));
         }
 
         /// <summary>

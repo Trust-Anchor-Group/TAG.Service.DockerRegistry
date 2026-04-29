@@ -4,20 +4,17 @@ using Waher.Persistence.Attributes;
 namespace TAG.Networking.DockerRegistry.Model
 {
     /// <summary>
-    /// A Docker Image reference
+    /// A Docker manifest
     /// </summary>
-    [CollectionName("DockerImages")]
+    [CollectionName("DockerManifest")]
     [TypeName(TypeNameSerialization.None)]
-    [Index("RepositoryName", "Tag")]
-    [Index("RepositoryName")]
-    [Index("Tag")]
     [Index("Digest")]
-    public class DockerImage
+    public class DockerManifest
     {
         /// <summary>
         /// A Docker Image reference
         /// </summary>
-        public DockerImage()
+        public DockerManifest()
         {
         }
 
@@ -28,16 +25,6 @@ namespace TAG.Networking.DockerRegistry.Model
         public string ObjectId { get; set; }
 
         /// <summary>
-        /// Name of image.
-        /// </summary>
-        public string RepositoryName { get; set; }
-
-        /// <summary>
-        /// Image Tag.
-        /// </summary>
-        public string Tag { get; set; }
-
-        /// <summary>
         /// Manifest Digest
         /// </summary>
         public HashDigest Digest { get; set; }
@@ -45,18 +32,22 @@ namespace TAG.Networking.DockerRegistry.Model
         /// <summary>
         /// Manifest Digest
         /// </summary>
-        public IImageManifest Manifest { get; set; }
+        public IManifest Manifest { get; set; }
 
         public long GetSize()
         {
-            long Size = 0;
-
-            foreach (IImageLayer Layer in Manifest.GetLayers())
+            if (Manifest is IImageManifest ImageManifest)
             {
-                Size += Layer.Size;
+                long Size = 0;
+                foreach (IImageLayer Layer in ImageManifest.GetLayers())
+                {
+                    Size += Layer.Size;
+                }
+
+                return Size;
             }
 
-            return Size;
+            throw new Exception($"Cannot get size of {this.GetType().FullName}");
         }
     }
 }

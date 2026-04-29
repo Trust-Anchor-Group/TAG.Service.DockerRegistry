@@ -126,8 +126,8 @@ namespace TAG.Networking.DockerRegistry
         {
             return Path.Combine(this.blobFolder, Hashes.BinaryToString(Digest.Hash) + ".bin");
         }
-
         public async Task<int> CleanUnusedBlobs()
+
         {
             Log.Informational("Cleaning unused Docker Registry blobs...");
             List<HashDigest> AllBlobDigests = (await Database.Find<DockerBlob>()).Select(Blob => Blob.Digest).ToList();
@@ -162,16 +162,20 @@ namespace TAG.Networking.DockerRegistry
                     AllBlobDigests.RemoveAt(index);
             }
 
-            DockerImage[] AllImages = (await Database.Find<DockerImage>()).ToArray();
+            IImageManifest[] AllImages = (await Database.Find<DockerManifest>())
+                .Where(x => x.Manifest is IImageManifest)
+                .Select(x => x.Manifest)
+                .Cast<IImageManifest>()
+                .ToArray();
 
             for (int i = 0; i < AllImages.Length; i++)
             {
-                index = AllBlobDigests.BinarySearch(AllImages[i].Manifest.GetConfig().Digest);
+                index = AllBlobDigests.BinarySearch(AllImages[i].GetConfig().Digest);
 
                 if (index > -1)
                     AllBlobDigests.RemoveAt(index);
 
-                foreach (IImageLayer Layer in AllImages[i].Manifest.GetLayers())
+                foreach (IImageLayer Layer in AllImages[i].GetLayers())
                 {
                     index = AllBlobDigests.BinarySearch(Layer.Digest);
                     if (index > -1)

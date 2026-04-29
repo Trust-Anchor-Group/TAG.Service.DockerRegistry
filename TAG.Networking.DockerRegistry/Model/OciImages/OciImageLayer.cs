@@ -17,8 +17,13 @@ namespace TAG.Networking.DockerRegistry.Model.OciImages
 				Descriptor.MediaType == "application/vnd.oci.image.layer.v1.tar" ||
 				Descriptor.MediaType == "application/vnd.oci.image.layer.v1.tar+gzip" ||
 				Descriptor.MediaType == "application/vnd.oci.image.layer.nondistributable.v1.tar" ||
-				Descriptor.MediaType == "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip"
-			))
+				Descriptor.MediaType == "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip" ||
+                // artifac media types
+                Descriptor.MediaType == "application/vnd.in-toto+json" ||
+                Descriptor.MediaType == "application/vnd.syft+json" ||
+                Descriptor.MediaType == "application/vnd.cyclonedx+json" || 
+                Descriptor.MediaType == "application/vnd.oci.image.config.v1 + json"
+            ))
 				throw new Exception("Invalid media type");
 
 			MediaType = Descriptor.MediaType;

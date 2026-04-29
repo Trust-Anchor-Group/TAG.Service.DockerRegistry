@@ -63,14 +63,14 @@ namespace TAG.Networking.DockerRegistry.Model
             return Storage;
         }
 
-        public async Task<DockerImage[]> FindOwnedImages()
+        public async Task<DockerManifest[]> FindOwnedImages()
         {
             DockerRepository[] Repositories = (await Database.Find<DockerRepository>(new FilterAnd(new FilterFieldEqualTo("OwnerGuid", Guid)))).ToArray();
 
-            List<DockerImage> DockerImages = new List<DockerImage>();
+            List<DockerManifest> DockerImages = new List<DockerManifest>();
             foreach (DockerRepository Repository in Repositories)
             {
-                DockerImage[] Images = (await Database.Find<DockerImage>(new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName))).ToArray();
+                DockerManifest[] Images = (await Database.Find<DockerManifest>(new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName))).ToArray();
                 DockerImages.AddRange(Images);
             }
 
@@ -83,14 +83,18 @@ namespace TAG.Networking.DockerRegistry.Model
             if (StorageHandle is null)
                 return;
 
-            DockerImage[] Images = await FindOwnedImages();
+            IImageManifest[] Images = (await FindOwnedImages())
+                .Where(x => x.Manifest is IImageManifest)
+                .Select(x => x.Manifest)
+                .Cast<IImageManifest>()
+                .ToArray();
 
             StorageHandle.Storage.UsedStorage = 0;
             StorageHandle.Storage.BlobCounter = new DigestReferenceCounter[0];
 
-            foreach (DockerImage Image in Images)
+            foreach (IImageManifest Image in Images)
             {
-                await StorageHandle.Storage.RegistrerImage(Image.Manifest);
+                await StorageHandle.Storage.RegisterManifest(Image);
             }
         }
     }

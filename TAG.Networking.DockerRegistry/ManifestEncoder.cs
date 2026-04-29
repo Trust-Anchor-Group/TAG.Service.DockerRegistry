@@ -8,9 +8,9 @@ using Waher.Runtime.Inventory;
 
 namespace TAG.Networking.DockerRegistry
 {
-	public class ImageManifestEncoder : IContentEncoder
+	public class ManifestEncoder : IContentEncoder
 	{
-		public ImageManifestEncoder()
+		public ManifestEncoder()
 		{
 
 		}
@@ -18,17 +18,18 @@ namespace TAG.Networking.DockerRegistry
 		public string[] ContentTypes => contentTypes;
 		private static readonly string[] contentTypes = new string[]
 		{
-			OCIImageManifest.MediaTypeValue
-		};
+			OCIImageManifest.MediaTypeValue,
+			OciImageIndex.MediaTypeValue
+        };
 
 
 		public string[] FileExtensions => throw new System.NotImplementedException();
 
 		public Task<ContentResponse> EncodeAsync(object Object, Encoding Encoding, ICodecProgress Progress, params string[] AcceptedContentTypes)
 		{
-			if (!(Object is IImageManifest Manifest))
+			if (!(Object is IManifest Manifest))
 			{
-				return Task.FromResult(new ContentResponse(new ArgumentException("Object not IImageManifest.", nameof(Object))));
+				return Task.FromResult(new ContentResponse(new ArgumentException("Object not IManifest.", nameof(Object))));
 			}
 
 			return Task.FromResult(new ContentResponse(Manifest.MediaType, Object, Manifest.Raw));
@@ -36,7 +37,7 @@ namespace TAG.Networking.DockerRegistry
 
 		public bool Encodes(object Object, out Grade Grade, params string[] AcceptedContentTypes)
 		{
-			if (Object is IImageManifest)
+			if (Object is IManifest)
 			{
 				Grade = Grade.Ok;
 				return true;

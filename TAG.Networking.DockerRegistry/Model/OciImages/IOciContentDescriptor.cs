@@ -2,11 +2,8 @@
 
 namespace TAG.Networking.DockerRegistry.Model.OciImages
 {
-	public interface IOciContentDescriptor
+	public interface IOciContentDescriptor : IContentDescriptor
 	{
-		public string MediaType { get; set; }
-		public int Size { get; set; }
-		public HashDigest Digest { get; set; }
 		public string[] Urls { get; set; }
 		public Dictionary<string, string> Annotations { get; set; }
 		public string Data { get; set; }

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using TAG.Networking.DockerRegistry.Errors;
 using TAG.Networking.DockerRegistry.Model;
@@ -9,6 +8,7 @@ using Waher.Content;
 using Waher.Events;
 using Waher.Networking.HTTP;
 using Waher.Networking.Sniffers;
+using Waher.Networking.XMPP.PubSub;
 using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Security;
@@ -33,28 +33,32 @@ namespace TAG.Networking.DockerRegistry.Endpoints
         {
             await AssertRepositoryPrivilages(Actor, Repository, DockerRepository.RepositoryAction.Pull, Request);
 
-            DockerImage Image;
+            DockerManifest Manifest;
 
             if (HashDigest.TryParseDigest(Reference, out HashDigest Digest))
             {
-                Image = await Database.FindFirstIgnoreRest<DockerImage>(new FilterAnd(
-                    new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName),
-                    new FilterFieldEqualTo("Digest", Digest)));
+                Manifest = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(new FilterFieldEqualTo("Digest", Digest)));
             }
             else
             {
-                Image = await Database.FindFirstIgnoreRest<DockerImage>(new FilterAnd(
-                    new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName),
-                    new FilterFieldEqualTo("Tag", Reference)));
+                ImageReference ImageReference = await Database.FindFirstIgnoreRest<ImageReference>(new FilterAnd(
+                    new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName),
+                    new FilterFieldEqualTo(nameof(ImageReference.Tag), Reference)));
+
+                if (ImageReference is null)
+                    throw new NotFoundException(new DockerError(DockerErrorCode.MANIFEST_UNKNOWN, "Manifest unknown."), apiHeader);
+
+                Manifest = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(new FilterFieldEqualTo("Digest", ImageReference.Digest)));
             }
 
-            if (Image is null)
+            if (Manifest is null)
                 throw new NotFoundException(new DockerError(DockerErrorCode.MANIFEST_UNKNOWN, "Manifest unknown."), apiHeader);
 
             Request.Header.AcceptEncoding = null;
 
-            await Response.Return(Image.Manifest);
+            await Response.Return(Manifest.Manifest);
         }
+
         public async Task DELETE(HttpRequest Request, HttpResponse Response, DockerActor Actor, DockerRepository Repository, string Reference)
         {
             await AssertRepositoryPrivilages(Actor, Repository, DockerRepository.RepositoryAction.Delete, Request);
@@ -64,16 +68,20 @@ namespace TAG.Networking.DockerRegistry.Endpoints
             if (!HashDigest.TryParseDigest(Reference, out HashDigest Digest))
                 throw new BadRequestException(new DockerErrors(DockerErrorCode.DIGEST_INVALID, "Invalid manifest digest reference."), apiHeader);
 
-            DockerImage Image = await Database.FindFirstIgnoreRest<DockerImage>(new FilterAnd(
-                new FilterFieldEqualTo("Digest", Digest)));
+            DockerManifest Manifest = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(
+                new FilterFieldEqualTo(nameof(DockerManifest.Digest), Digest)));
 
-
-            if (Image is null)
+            if (Manifest is null)
                 throw new NotFoundException(new DockerErrors(DockerErrorCode.NAME_INVALID, "Manifest unknown."), apiHeader);
 
-            await Handle.Storage.UnregisterImage(Image.Manifest);
+            await Database.FindDelete<ImageReference>(new FilterAnd(
+                new FilterFieldEqualTo(nameof(ImageReference), Manifest.Digest)
+            ));
 
-            await Database.Delete(Image);
+            if (Manifest.Manifest is IImageManifest Image)
+                await Handle.Storage.UnregisterImage(Image);
+
+            await Database.Delete(Manifest);
 
             Response.StatusCode = 202;
             Response.StatusMessage = "Accepted";
@@ -90,116 +98,115 @@ namespace TAG.Networking.DockerRegistry.Endpoints
             ContentResponse ManifestContentResponse = await Request.DecodeDataAsync();
             string Tag = null;
 
-            IImageManifest Manifest;
+            IManifest Manifest;
 
             if (ManifestContentResponse.Decoded is OCIImageManifest OciManifest)
                 Manifest = OciManifest;
             else if (ManifestContentResponse.Decoded is DockerImageManifestV2 DockerManifestV2)
                 Manifest = DockerManifestV2;
+            else if (ManifestContentResponse.Decoded is OciImageIndex OciImageIndex)
+                Manifest = OciImageIndex;
             else
                 throw new BadRequestException(new DockerErrors(DockerErrorCode.MANIFEST_INVALID, "Manifest invalid."), apiHeader);
 
-            foreach (IImageLayer Layer in Manifest.GetLayers())
+            if (Manifest is IImageManifest Image)
             {
-                DockerBlob Blob = await Database.FindFirstIgnoreRest<DockerBlob>(new FilterAnd(
-                    new FilterFieldEqualTo("Digest", Layer.Digest)));
+                foreach (IImageLayer Layer in Image.GetLayers())
+                {
+                    DockerBlob Blob = await Database.FindFirstIgnoreRest<DockerBlob>(new FilterAnd(
+                        new FilterFieldEqualTo("Digest", Layer.Digest)));
 
-                if (Blob is null)
-                    throw new BadRequestException(new DockerErrors(DockerErrorCode.BLOB_UNKNOWN,
-                    "BLOB unknown to registry.", new Dictionary<string, object>()
-                    {
+                    if (Blob is null)
+                        throw new BadRequestException(new DockerErrors(DockerErrorCode.BLOB_UNKNOWN,
+                        "BLOB unknown to registry.", new Dictionary<string, object>()
+                        {
                                     { "digest", Layer.Digest.ToString() }
-                    }), apiHeader);
+                        }), apiHeader);
+                }
             }
+
+            DockerManifest Old = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(
+                new FilterFieldEqualTo(nameof(DockerManifest.Digest), Manifest.Digest)
+            ));
+
+            if (!(Old is null))
+            {
+                Log.Informational("Docker image uploaded.", Old.Digest.ToString());
+                Response.StatusCode = 201;
+                Response.StatusMessage = "Created";
+                Response.SetHeader("Docker-Content-Digest", new HashDigest(HashFunction.SHA256, Old.Manifest.Raw).ToString());
+                await Response.SendResponse();
+                return;
+            }
+
 
             if (HashDigest.TryParseDigest(Reference, out HashDigest Digest))
             {
-                if (!(Digest != Manifest.GetConfig().Digest))
+                if (Digest != new HashDigest(HashFunction.SHA256, Manifest.Raw))
                     throw new BadRequestException(new DockerErrors(DockerErrorCode.MANIFEST_INVALID, "Manifest invalid. Digest mismatch."), apiHeader);
             }
             else
                 Tag = Reference;
 
-            DockerImage Image;
-
-            if (string.IsNullOrEmpty(Tag))
-            {
-                Image = await Database.FindFirstIgnoreRest<DockerImage>(new FilterAnd(
-                    new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName),
-                    new FilterFieldEqualTo("Digest", Digest)));
-
-                if (!(Image is null))
-                    Tag = Image.Tag;
-                else
-                    throw new BadRequestException(new DockerErrors(DockerErrorCode.MANIFEST_INVALID, "Manifest invalid. Missing tag."), apiHeader);
-            }
-            else
-            {
-                Image = await Database.FindFirstIgnoreRest<DockerImage>(new FilterAnd(
-                    new FilterFieldEqualTo("RepositoryName", Repository.RepositoryName),
-                    new FilterFieldEqualTo("Tag", Tag)));
-            }
-
             DockerActor Owner = await Repository.GetOwner();
             await using WritableStorageHandle Handle = await Owner.GetWritableStorage();
 
-            if (Image is null)
+            DockerManifest NewManifest = new DockerManifest()
             {
-                Image = new DockerImage()
+                Digest = Manifest.Digest,
+                Manifest = Manifest,
+            };
+
+            if (NewManifest.Manifest is IImageManifest ManifestImage)
+            {
+                await Handle.Storage.RegisterManifest(ManifestImage);
+
+                if (Handle.Storage.MaxStorage - Handle.Storage.UsedStorage < 0)
                 {
-                    RepositoryName = Repository.RepositoryName,
-                    Tag = Tag,
-                    Manifest = Manifest,
-                    Digest = new HashDigest(HashFunction.SHA256, Manifest.Raw),
-                };
-
-                await Database.Insert(Image);
+                    await Handle.Storage.UnregisterImage(ManifestImage);
+                    throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Storage quota exceeded."), apiHeader);
+                }
+                
+                foreach (IImageLayer Layer in ManifestImage.GetLayers())
+                {
+                    await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", Layer.Digest)));
+                }
             }
-            else
-            {
-                await Handle.Storage.UnregisterImage(Image.Manifest);
 
-                if (string.IsNullOrEmpty(Tag))
-                    Tag = Image.Tag;
+
+            await Database.Insert(NewManifest);
+            await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", NewManifest.Digest)));
+
+
+            if (!string.IsNullOrEmpty(Tag))
+            {
+                ImageReference Ref = await Database.FindFirstIgnoreRest<ImageReference>(new FilterAnd(
+                    new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName),
+                    new FilterFieldEqualTo(nameof(ImageReference.Tag), Tag)));
+
+                if (Ref is null)
+                {
+                    Ref = new ImageReference()
+                    {
+                        Digest = Manifest.Digest,
+                        RepositoryName = Repository.RepositoryName,
+                        Tag = Tag
+                    };
+                    await Database.Insert(Ref);
+                }
                 else
-                    Image.Tag = Tag;
-
-                byte[] Data = await Request.ReadDataAsync();
-
-                Image.Manifest = Manifest;
-                Image.Digest = new HashDigest(HashFunction.SHA256, Manifest.Raw);
-
-                await Database.Update(Image);
-            }
-
-            await Handle.Storage.RegistrerImage(Image.Manifest);
-
-            if (Handle.Storage.MaxStorage - Handle.Storage.UsedStorage < 0)
-            {
-                await Handle.Storage.UnregisterImage(Image.Manifest);
-                await Database.Delete(Image);
-                throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Storage quota exceeded."), apiHeader);
+                {
+                    Ref.Digest = Manifest.Digest;
+                    await Database.Update(Ref);
+                }
             }
 
 
-            await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", Image.Manifest.GetConfig().Digest)));
-
-            foreach (IImageLayer Layer in Manifest.GetLayers())
-            {
-                await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", Layer.Digest)));
-            }
-
-            Log.Informational("Docker image uploaded.", Image.RepositoryName, Request.User.UserName,
-                await LoginAuditor.Annotate(Request.RemoteEndPoint,
-                new KeyValuePair<string, object>("Tag", Image.Tag),
-                new KeyValuePair<string, object>("Digest", Image.Digest.ToString()),
-                new KeyValuePair<string, object>("RemoteEndPoint", Request.RemoteEndPoint)));
-
+            Log.Informational("Docker image uploaded.", NewManifest.Digest.ToString());
             Response.StatusCode = 201;
             Response.StatusMessage = "Created";
-            Response.SetHeader("Docker-Content-Digest", new HashDigest(HashFunction.SHA256, Image.Manifest.Raw).ToString());
+            Response.SetHeader("Docker-Content-Digest", new HashDigest(HashFunction.SHA256, NewManifest.Manifest.Raw).ToString());
             await Response.SendResponse();
-            return;
         }
     }
 }

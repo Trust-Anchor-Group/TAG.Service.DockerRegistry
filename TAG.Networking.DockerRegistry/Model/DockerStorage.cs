@@ -54,7 +54,7 @@ namespace TAG.Networking.DockerRegistry.Model
             this.MaxStorage = MaxStorage;
         }
 
-        public async Task RegistrerImage(IImageManifest Image)
+        public async Task RegisterManifest(IImageManifest Image)
         {
             await RecordDigestReference(Image.GetConfig().Digest);
 
