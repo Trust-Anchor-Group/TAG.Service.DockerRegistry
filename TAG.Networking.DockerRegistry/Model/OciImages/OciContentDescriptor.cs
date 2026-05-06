@@ -13,9 +13,14 @@ namespace TAG.Networking.DockerRegistry.Model.OciImages
 				throw new Exception("Invalid media type.");
 			Descriptor.MediaType = JsonMediaType;
 
-			if (!(Json.TryGetValue("size", out object SizeObj) && SizeObj is int JsonSize))
+			if (!Json.TryGetValue("size", out object SizeObj))
 				throw new Exception("Invalid size.");
-			Descriptor.Size = JsonSize;
+			if (SizeObj is int JsonSizeInt)
+				Descriptor.Size = JsonSizeInt;
+			else if (SizeObj is long JsonSizeLong)
+				Descriptor.Size = JsonSizeLong;
+			else
+				throw new Exception("Invalid size.");
 
 			if (!(Json.TryGetValue("digest", out object DigestObj) && DigestObj is string JsonDigestString))
 				throw new Exception("Invalid digest.");
@@ -62,7 +67,7 @@ namespace TAG.Networking.DockerRegistry.Model.OciImages
 		}
 		public OciPlatform Platform { get; set; }
 		public string MediaType { get; set; }
-		public int Size { get; set; }
+		public long Size { get; set; }
 		public HashDigest Digest { get; set; }
 		public string[] Urls { get; set; }
 		public Dictionary<string, string> Annotations { get; set; }

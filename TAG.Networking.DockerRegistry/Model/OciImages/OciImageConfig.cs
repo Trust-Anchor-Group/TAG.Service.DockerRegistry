@@ -26,7 +26,7 @@ namespace TAG.Networking.DockerRegistry.Model.OciImages
 		}
 
 		public string MediaType { get; set; }
-		public int Size { get; set; }
+		public long Size { get; set; }
 		public HashDigest Digest { get; set; }
 		public string[] Urls { get; set; }
 		public Dictionary<string, string> Annotations { get; set; }

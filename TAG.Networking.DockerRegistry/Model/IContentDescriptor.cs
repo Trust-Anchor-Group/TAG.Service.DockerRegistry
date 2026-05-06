@@ -7,7 +7,7 @@ namespace TAG.Networking.DockerRegistry.Model
     public interface IContentDescriptor
     {
         public string MediaType { get; set; }
-        public int Size { get; set; }
+        public long Size { get; set; }
         public HashDigest Digest { get; set; }
     }
 }

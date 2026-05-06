@@ -3,7 +3,7 @@
 	public interface IImageConfig
 	{
 		public string MediaType { get; }
-		public int Size { get; }
+		public long Size { get; }
 		public HashDigest Digest { get; }
 	}
 }

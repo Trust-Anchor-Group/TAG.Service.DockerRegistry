@@ -6,7 +6,7 @@ namespace TAG.Networking.DockerRegistry.Model.DockerImages
 	{
 		public string MediaType { get; set; }
 
-		public int Size { get; set; }
+		public long Size { get; set; }
 
 		public HashDigest Digest { get; set; }
 
