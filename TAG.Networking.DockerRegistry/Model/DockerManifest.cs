@@ -9,7 +9,7 @@ namespace TAG.Networking.DockerRegistry.Model
     [CollectionName("DockerManifest")]
     [TypeName(TypeNameSerialization.None)]
     [Index("Digest")]
-    public class DockerManifest
+    public sealed class DockerManifest : ReferenceCounter
     {
         /// <summary>
         /// A Docker Image reference
@@ -34,6 +34,11 @@ namespace TAG.Networking.DockerRegistry.Model
         /// </summary>
         public IManifest Manifest { get; set; }
 
+        /// <summary>
+        /// How many tags and image indecies referencing this image exists
+        /// </summary>
+        public int ReferenceCount { get; set; }
+
         public long GetSize()
         {
             if (Manifest is IImageManifest ImageManifest)
@@ -49,7 +54,5 @@ namespace TAG.Networking.DockerRegistry.Model
 
             return 0;
         }
-
-
     }
 }

@@ -13,12 +13,14 @@ namespace TAG.Networking.DockerRegistry.Endpoints
     internal abstract class DockerEndpoints : IDockerEndpoints
     {
         protected static readonly KeyValuePair<string, string> apiHeader = new KeyValuePair<string, string>("Docker-Distribution-API-Version", "registry/2.0");
-        protected readonly string dockerRegistryFolder;
+        protected ManifestManager manifestManager;
+        protected BlobManager blobManager;
 
         private ISniffer[] sniffers;
-        public DockerEndpoints(string DockerRegistryFolder, ISniffer[] Sniffers)
+        public DockerEndpoints(ManifestManager ManifestManager, BlobManager BlobManager, ISniffer[] Sniffers)
         {
-            this.dockerRegistryFolder = DockerRegistryFolder;
+            this.blobManager = BlobManager;
+            this.manifestManager = ManifestManager;
             this.sniffers = Sniffers;
         }
 

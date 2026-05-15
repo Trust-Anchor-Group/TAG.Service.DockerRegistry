@@ -14,7 +14,7 @@ namespace TAG.Networking.DockerRegistry.Endpoints
     internal class BlobUploadEndpoints : DockerEndpoints
     {
         private readonly Cache<Guid, BlobUpload> uploads = new Cache<Guid, BlobUpload>(int.MaxValue, TimeSpan.MaxValue, TimeSpan.FromHours(1));
-        private BlobStorage blobStorage;
+        private readonly string dockerRegistryFolder;
 
         /// <summary>
         /// Folder where BLOBs are uploaded to.
@@ -32,11 +32,11 @@ namespace TAG.Networking.DockerRegistry.Endpoints
             }
         }
 
-        public BlobUploadEndpoints(string DockerRegistryFolder, ISniffer[] Sniffers, BlobStorage BlobStorage)
-            : base(DockerRegistryFolder, Sniffers)
+        public BlobUploadEndpoints(string DockerRegistryFolder, ManifestManager ManifestManager, BlobManager BlobManager, ISniffer[] Sniffers)
+            : base(ManifestManager, BlobManager, Sniffers)
         {
             this.uploads.Removed += this.Uploads_Removed;
-            this.blobStorage = BlobStorage;
+            this.dockerRegistryFolder = DockerRegistryFolder;
         }
 
         public async Task GET(HttpRequest Request, HttpResponse Response, ByteRangeInterval Interval, DockerActor Actor, DockerRepository Repository, string Reference)
@@ -192,7 +192,7 @@ namespace TAG.Networking.DockerRegistry.Endpoints
 
                 await Database.Insert(Dangling);
 
-                bool Created = await this.blobStorage.UploadComplete(UploadRecord);
+                bool Created = await this.blobManager.UploadComplete(UploadRecord);
 
                 if (!Created)
                 {

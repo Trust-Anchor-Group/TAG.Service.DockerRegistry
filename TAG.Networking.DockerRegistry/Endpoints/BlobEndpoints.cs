@@ -4,20 +4,14 @@ using TAG.Networking.DockerRegistry.Errors;
 using TAG.Networking.DockerRegistry.Model;
 using Waher.Networking.HTTP;
 using Waher.Networking.Sniffers;
-using Waher.Persistence;
-using Waher.Persistence.Filters;
-
 
 namespace TAG.Networking.DockerRegistry.Endpoints
 {
 	internal class BlobEndpoints : DockerEndpoints
 	{
-		private BlobStorage blobStorage;
-
-		public BlobEndpoints(string DockerRegistryFolder, ISniffer[] Sniffers, BlobStorage BlobStorage)
-			: base(DockerRegistryFolder, Sniffers)
-		{
-			this.blobStorage = BlobStorage;
+		public BlobEndpoints(ManifestManager ManifestManager, BlobManager BlobManager, ISniffer[] Sniffers)
+            : base(ManifestManager, BlobManager, Sniffers)
+        {
 		}
 
 		public async Task GET(HttpRequest Request, HttpResponse Response, ByteRangeInterval Interval, DockerActor Actor, DockerRepository Repository, string Reference)
@@ -27,27 +21,27 @@ namespace TAG.Networking.DockerRegistry.Endpoints
             if (!HashDigest.TryParseDigest(Reference, out HashDigest Digest))
 				throw new BadRequestException(new DockerErrors(DockerErrorCode.DIGEST_INVALID, "Provided digest did not match uploaded content."), apiHeader);
 
-			FileStream BlobFile = await this.blobStorage.TryGetBlobFile(Digest);
+			FileStream? BlobStream = await this.blobManager.ReadBlob(Digest);
 
-			if (BlobFile == null)
+			if (BlobStream == null)
 				throw new NotFoundException(new DockerErrors(DockerErrorCode.BLOB_UNKNOWN, "Blob not found."), apiHeader);
 
 			Request.Header.AcceptEncoding = null;
 
-			using (BlobFile)
+			using (BlobStream)
 			{
 				long Offset = Interval?.First ?? 0L;
 				long Count;
 
-				Count = BlobFile.Length;
+				Count = BlobStream.Length;
 
 				Response.StatusCode = 200;
-				Response.SetHeader("Content-Length", BlobFile.Length.ToString());
+				Response.SetHeader("Content-Length", BlobStream.Length.ToString());
 				Response.SetHeader("Docker-Content-Digest", Digest.ToString());
 				Response.SetHeader("Content-Range", Offset.ToString() + "-" +
-					(Offset + Count - 1).ToString() + "/" + BlobFile.Length.ToString());
+					(Offset + Count - 1).ToString() + "/" + BlobStream.Length.ToString());
 
-				await WriteToResponse(Response, BlobFile, Offset, Count);
+				await WriteToResponse(Response, BlobStream, Offset, Count);
 			}
 
 			await Response.SendResponse();

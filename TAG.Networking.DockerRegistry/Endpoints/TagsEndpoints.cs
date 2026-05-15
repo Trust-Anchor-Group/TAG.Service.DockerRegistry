@@ -13,8 +13,8 @@ namespace TAG.Networking.DockerRegistry.Endpoints
 {
     internal class TagsEndpoints : DockerEndpoints
     {
-        public TagsEndpoints(string DockerRegistryFolder, ISniffer[] Sniffers)
-             : base(DockerRegistryFolder, Sniffers)
+        public TagsEndpoints(ManifestManager ManifestManager, BlobManager BlobManager, ISniffer[] Sniffers)
+            : base(ManifestManager, BlobManager, Sniffers)
         {
 
         }
@@ -28,7 +28,7 @@ namespace TAG.Networking.DockerRegistry.Endpoints
                 Images = (await Database.Find<ImageReference>(First, Count, new FilterAnd(new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName)))).ToArray();
             else
                 Images = (await Database.Find<ImageReference>(new FilterAnd(new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName)))).ToArray();
-            
+
             Response.StatusCode = 200;
             await Response.Return(new Dictionary<string, object>()
             {

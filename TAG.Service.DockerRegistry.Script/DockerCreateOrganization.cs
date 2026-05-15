@@ -82,7 +82,7 @@ namespace TAG.Service.DockerRegistry.Script
             {
                 MaxStorage = MaxStorage,
                 Guid = NewOrganization.StorageGuid,
-                BlobCounter = new DigestReferenceCounter[] { },
+                BlobCounter = new ReferenceCounter[] { },
                 UsedStorage = 0
             };
 

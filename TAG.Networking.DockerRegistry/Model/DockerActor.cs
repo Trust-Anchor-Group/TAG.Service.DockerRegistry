@@ -110,23 +110,7 @@ namespace TAG.Networking.DockerRegistry.Model
 
         public async Task ReSyncStorage()
         {
-            await using WritableStorageHandle StorageHandle = await GetWritableStorage();
-            if (StorageHandle is null)
-                return;
-
-            IImageManifest[] Images = (await this.FindReferencedManifests())
-                .Where(x => x.Manifest is IImageManifest)
-                .Select(x => x.Manifest)
-                .Cast<IImageManifest>()
-                .ToArray();
-
-            StorageHandle.Storage.UsedStorage = 0;
-            StorageHandle.Storage.BlobCounter = new DigestReferenceCounter[0];
-
-            foreach (IImageManifest Image in Images)
-            {
-                await StorageHandle.Storage.RegisterManifest(Image);
-            }
+            // TODO
         }
     }
 }

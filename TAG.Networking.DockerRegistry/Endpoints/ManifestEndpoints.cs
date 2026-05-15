@@ -8,6 +8,7 @@ using Waher.Content;
 using Waher.Events;
 using Waher.Networking.HTTP;
 using Waher.Networking.Sniffers;
+using Waher.Networking.XMPP.Provisioning.SearchOperators;
 using Waher.Persistence;
 using Waher.Persistence.Filters;
 using Waher.Security;
@@ -16,8 +17,8 @@ namespace TAG.Networking.DockerRegistry.Endpoints
 {
     internal class ManifestEndpoints : DockerEndpoints
     {
-        public ManifestEndpoints(string DockerRegistryFolder, ISniffer[] Sniffers)
-            : base(DockerRegistryFolder, Sniffers)
+        public ManifestEndpoints(ManifestManager ManifestManager, BlobManager BlobManager, ISniffer[] Sniffers)
+            : base(ManifestManager, BlobManager, Sniffers)
         {
 
         }
@@ -31,55 +32,31 @@ namespace TAG.Networking.DockerRegistry.Endpoints
         {
             await AssertRepositoryPrivilages(Actor, Repository, DockerRepository.RepositoryAction.Pull, Request);
 
-            DockerManifest Manifest;
+            IManifest? Manifest = null;
 
             if (HashDigest.TryParseDigest(Reference, out HashDigest Digest))
-            {
-                Manifest = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(new FilterFieldEqualTo("Digest", Digest)));
-            }
+                Manifest = await this.manifestManager.FindManifest(Digest);
             else
-            {
-                ImageReference ImageReference = await Database.FindFirstIgnoreRest<ImageReference>(new FilterAnd(
-                    new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName),
-                    new FilterFieldEqualTo(nameof(ImageReference.Tag), Reference)));
-
-                if (ImageReference is null)
-                    throw new NotFoundException(new DockerError(DockerErrorCode.MANIFEST_UNKNOWN, "Manifest unknown."), apiHeader);
-
-                Manifest = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(new FilterFieldEqualTo("Digest", ImageReference.Digest)));
-            }
+                Manifest = await this.manifestManager.FindManifest(Repository.RepositoryName, Reference);
 
             if (Manifest is null)
                 throw new NotFoundException(new DockerError(DockerErrorCode.MANIFEST_UNKNOWN, "Manifest unknown."), apiHeader);
 
             Request.Header.AcceptEncoding = null;
 
-            await Response.Return(Manifest.Manifest);
+            await Response.Return(Manifest);
         }
 
         public async Task DELETE(HttpRequest Request, HttpResponse Response, DockerActor Actor, DockerRepository Repository, string Reference)
         {
             await AssertRepositoryPrivilages(Actor, Repository, DockerRepository.RepositoryAction.Delete, Request);
+
             DockerActor Owner = await Repository.GetOwner();
             await using WritableStorageHandle Handle = await Owner.GetWritableStorage();
 
             if (!HashDigest.TryParseDigest(Reference, out HashDigest Digest))
                 throw new BadRequestException(new DockerErrors(DockerErrorCode.DIGEST_INVALID, "Invalid manifest digest reference."), apiHeader);
-
-            DockerManifest Manifest = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(
-                new FilterFieldEqualTo(nameof(DockerManifest.Digest), Digest)));
-
-            if (Manifest is null)
-                throw new NotFoundException(new DockerErrors(DockerErrorCode.NAME_INVALID, "Manifest unknown."), apiHeader);
-
-            await Database.FindDelete<ImageReference>(new FilterAnd(
-                new FilterFieldEqualTo(nameof(ImageReference), Manifest.Digest)
-            ));
-
-            if (Manifest.Manifest is IImageManifest Image)
-                await Handle.Storage.UnregisterImage(Image);
-
-            await Database.Delete(Manifest);
+            await this.manifestManager.DeleteManifest(Digest, Handle);
 
             Response.StatusCode = 202;
             Response.StatusMessage = "Accepted";
@@ -123,21 +100,6 @@ namespace TAG.Networking.DockerRegistry.Endpoints
                 }
             }
 
-            DockerManifest Old = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(
-                new FilterFieldEqualTo(nameof(DockerManifest.Digest), Manifest.Digest)
-            ));
-
-            if (!(Old is null))
-            {
-                Log.Informational("Docker image uploaded.", Old.Digest.ToString());
-                Response.StatusCode = 201;
-                Response.StatusMessage = "Created";
-                Response.SetHeader("Docker-Content-Digest", new HashDigest(HashFunction.SHA256, Old.Manifest.Raw).ToString());
-                await Response.SendResponse();
-                return;
-            }
-
-
             if (HashDigest.TryParseDigest(Reference, out HashDigest Digest))
             {
                 if (Digest != new HashDigest(HashFunction.SHA256, Manifest.Raw))
@@ -146,64 +108,23 @@ namespace TAG.Networking.DockerRegistry.Endpoints
             else
                 Tag = Reference;
 
+            DockerManifest Old = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(
+                new FilterFieldEqualTo(nameof(DockerManifest.Digest), Manifest.Digest)
+            ));
+
             DockerActor Owner = await Repository.GetOwner();
-            await using WritableStorageHandle Handle = await Owner.GetWritableStorage();
+            await using WritableStorageHandle StorageHandle = await Owner.GetWritableStorage();
 
-            DockerManifest NewManifest = new DockerManifest()
-            {
-                Digest = Manifest.Digest,
-                Manifest = Manifest,
-            };
-
-            if (NewManifest.Manifest is IImageManifest ManifestImage)
-            {
-                await Handle.Storage.RegisterManifest(ManifestImage);
-
-                if (Handle.Storage.MaxStorage - Handle.Storage.UsedStorage < 0)
-                {
-                    await Handle.Storage.UnregisterImage(ManifestImage);
-                    throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Storage quota exceeded."), apiHeader);
-                }
-
-                foreach (IImageLayer Layer in ManifestImage.GetLayers())
-                {
-                    await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", Layer.Digest)));
-                }
-
-                await Database.FindDelete<DanglingDockerBlob>(new FilterAnd(new FilterFieldEqualTo("Digest", ManifestImage.GetConfig().Digest)));
-            }
-
-            await Database.Insert(NewManifest);
-
+            if (Old is null && !await this.manifestManager.TryCreateManifest(Manifest, StorageHandle))
+                throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Storage quota exceeded."), apiHeader);
 
             if (!string.IsNullOrEmpty(Tag))
-            {
-                ImageReference Ref = await Database.FindFirstIgnoreRest<ImageReference>(new FilterAnd(
-                    new FilterFieldEqualTo(nameof(ImageReference.RepositoryName), Repository.RepositoryName),
-                    new FilterFieldEqualTo(nameof(ImageReference.Tag), Tag)));
+                await this.manifestManager.CreateManifestTag(Manifest.Digest, Repository.RepositoryName, Tag, StorageHandle);
 
-                if (Ref is null)
-                {
-                    Ref = new ImageReference()
-                    {
-                        Digest = Manifest.Digest,
-                        RepositoryName = Repository.RepositoryName,
-                        Tag = Tag
-                    };
-                    await Database.Insert(Ref);
-                }
-                else
-                {
-                    Ref.Digest = Manifest.Digest;
-                    await Database.Update(Ref);
-                }
-            }
-
-
-            Log.Informational("Docker image uploaded.", NewManifest.Digest.ToString());
+            Log.Informational("Docker image uploaded.", Manifest.Digest.ToString());
             Response.StatusCode = 201;
             Response.StatusMessage = "Created";
-            Response.SetHeader("Docker-Content-Digest", new HashDigest(HashFunction.SHA256, NewManifest.Manifest.Raw).ToString());
+            Response.SetHeader("Docker-Content-Digest", new HashDigest(HashFunction.SHA256, Manifest.Raw).ToString());
             await Response.SendResponse();
         }
     }

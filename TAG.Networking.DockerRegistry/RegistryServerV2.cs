@@ -46,7 +46,10 @@ namespace TAG.Networking.DockerRegistry
 
         private readonly HttpAuthenticationScheme[] authenticationSchemes;
         private readonly string dockerRegistryFolder;
-        private BlobStorage blobStorage;
+        private BlobManager blobManager;
+        private ManifestManager manifestManager;
+
+
         private ManifestEndpoints manifestEndpoints;
         private BlobEndpoints blobEndpoints;
         private BlobUploadEndpoints blobUploadEndpoints;
@@ -61,11 +64,16 @@ namespace TAG.Networking.DockerRegistry
         {
             this.dockerRegistryFolder = DockerRegistryFolder;
             this.authenticationSchemes = AuthenticationSchemes;
-            this.blobStorage = new BlobStorage(BlobFolder);
-            manifestEndpoints = new ManifestEndpoints(this.dockerRegistryFolder, new ISniffer[] { snifferProxy });
-            blobEndpoints = new BlobEndpoints(this.dockerRegistryFolder, new ISniffer[] { snifferProxy }, blobStorage);
-            blobUploadEndpoints = new BlobUploadEndpoints(this.dockerRegistryFolder, new ISniffer[] { snifferProxy }, this.blobStorage);
-            tagsEndpoints = new TagsEndpoints(this.dockerRegistryFolder, new ISniffer[] { snifferProxy });
+
+            this.blobManager = new BlobManager(BlobFolder);
+            this.manifestManager = new ManifestManager(this.blobManager);
+
+            ISniffer[] Sniffers = new ISniffer[] { snifferProxy };
+
+            manifestEndpoints = new ManifestEndpoints(this.manifestManager, this.blobManager, Sniffers);
+            blobEndpoints = new BlobEndpoints(this.manifestManager, this.blobManager, Sniffers);
+            blobUploadEndpoints = new BlobUploadEndpoints(this.dockerRegistryFolder, this.manifestManager, this.blobManager, Sniffers);
+            tagsEndpoints = new TagsEndpoints(this.manifestManager, this.blobManager, Sniffers);
         }
 
         /// <summary>
@@ -594,7 +602,7 @@ namespace TAG.Networking.DockerRegistry
         #region Cleanup Methods
         public async Task<int> CleanUnusedBlobs()
         {
-            return await blobStorage.CleanUnusedBlobs();
+            return 0;
         }
 
         public async Task<int> CleanUnmanagedRepositories()
@@ -837,7 +845,7 @@ namespace TAG.Networking.DockerRegistry
             for (int i = 0; i < DanglingBlobs.Length; i++)
             {
                 await Database.Delete(DanglingBlobs[i]);
-                await blobStorage.DeleteBlob(DanglingBlobs[i].Digest);
+                await blobManager.DeleteBlob(DanglingBlobs[i].Digest);
             }
         }
 

@@ -7,7 +7,7 @@ namespace TAG.Networking.DockerRegistry.Model
         private DockerStorage storage;
         public string ObjectId => storage.ObjectId;
         public Guid Guid => storage.Guid;
-        public DigestReferenceCounter[] BlobCounter => storage.BlobCounter;
+        public ReferenceCounter[] BlobCounter => storage.BlobCounter;
         public long MaxStorage => storage.MaxStorage;
         public long UsedStorage => storage.UsedStorage;
         public ReadOnlyDockerStorage(DockerStorage Storage)

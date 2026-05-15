@@ -1,4 +1,5 @@
 ﻿using System;
+using Waher.Networking.XMPP.StanzaErrors;
 using Waher.Persistence.Attributes;
 
 namespace TAG.Networking.DockerRegistry.Model
@@ -9,7 +10,7 @@ namespace TAG.Networking.DockerRegistry.Model
     [CollectionName("DockerBlobs")]
     [TypeName(TypeNameSerialization.None)]
     [Index("Digest")]
-    public class DockerBlob : IComparable
+    public class DockerBlob : ReferenceCounter, IComparable
     {
         /// <summary>
         /// A Docker BLOB reference
@@ -39,6 +40,11 @@ namespace TAG.Networking.DockerRegistry.Model
         /// Size of blob file in bytes
         /// </summary>
         public long Size { get; set; }
+
+        /// <summary>
+        /// Amount of images using this blob
+        /// </summary>
+        public int ReferenceCount { get; set; }
 
         public int CompareTo(object obj)
         {
