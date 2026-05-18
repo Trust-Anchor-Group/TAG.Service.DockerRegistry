@@ -28,7 +28,7 @@ namespace TAG.Networking.DockerRegistry.Model
         /// <summary>
         /// Blob reference counters
         /// </summary>
-        public ReferenceCounter[] BlobCounter { get; set; }
+        public DigestReferenceCounter[] BlobCounter { get; set; }
 
         /// <summary>
         /// Max amount unique blob data in bytes
@@ -116,12 +116,12 @@ namespace TAG.Networking.DockerRegistry.Model
 
         private bool IncrementDigest(HashDigest Digest)
         {
-            int index = Array.BinarySearch(BlobCounter, new ReferenceCounter(Digest));
+            int index = Array.BinarySearch(BlobCounter, new DigestReferenceCounter(Digest));
 
             if (index < 0)
             {
-                List<ReferenceCounter> BlobCounterList = new List<ReferenceCounter>(this.BlobCounter ?? Array.Empty<ReferenceCounter>());
-                BlobCounterList.Add(new ReferenceCounter(Digest, 1));
+                List<DigestReferenceCounter> BlobCounterList = new List<DigestReferenceCounter>(this.BlobCounter);
+                BlobCounterList.Add(new DigestReferenceCounter(Digest, 1));
                 BlobCounterList.Sort();
                 BlobCounter = BlobCounterList.ToArray();
                 return true;
@@ -133,7 +133,7 @@ namespace TAG.Networking.DockerRegistry.Model
 
         private bool DecrementDigest(HashDigest Digest)
         {
-            int index = Array.BinarySearch(BlobCounter, new ReferenceCounter(Digest));
+            int index = Array.BinarySearch(BlobCounter, new DigestReferenceCounter(Digest));
 
             if (index < 0)
             {
@@ -145,7 +145,7 @@ namespace TAG.Networking.DockerRegistry.Model
 
             if (BlobCounter[index].ReferenceCount < 1)
             {
-                List<ReferenceCounter> BlobCounterList = new List<ReferenceCounter>(this.BlobCounter);
+                List<DigestReferenceCounter> BlobCounterList = new List<DigestReferenceCounter>(this.BlobCounter);
                 BlobCounterList.RemoveAt(index);
                 BlobCounter = BlobCounterList.ToArray();
                 return true;
@@ -179,5 +179,7 @@ namespace TAG.Networking.DockerRegistry.Model
 
             return false;
         }
+
+        
     }
 }

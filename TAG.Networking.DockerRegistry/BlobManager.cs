@@ -7,7 +7,7 @@ using Waher.Security;
 
 namespace TAG.Networking.DockerRegistry
 {
-    internal class BlobManager
+    public class BlobManager
     {
         private string blobFolder;
 

@@ -28,9 +28,13 @@ namespace TAG.Service.DockerRegistry
         private static RegistryService instance;
 
         private RegistryServerV2 server;
+        private BlobManager blobManager;
+        private ManifestManager manifestManager;
         private LiveStorageView liveStorageView;
         private Scheduler blobClearSchedule;
         public static RegistryService Instance => instance;
+        public BlobManager BlobManager => this.blobManager;
+        public ManifestManager ManifestManager => this.manifestManager;
 
         /// <summary>
         /// Service controlling the life-cycle of the Docker Registry
@@ -48,6 +52,10 @@ namespace TAG.Service.DockerRegistry
             List<HttpAuthenticationScheme> Schemes = new List<HttpAuthenticationScheme>();
             bool RequireEncryption;
             int MinSecurityStrength;
+            string dockerRegistryFolder = Path.Combine(Gateway.AppDataFolder, "DockerRegistry");
+            string blobFolder = Path.Combine(dockerRegistryFolder, "BLOBs");
+
+            Directory.CreateDirectory(blobFolder);
 
             if (DomainConfiguration.Instance.UseEncryption && !string.IsNullOrEmpty(DomainConfiguration.Instance.Domain))
             {
@@ -76,7 +84,10 @@ namespace TAG.Service.DockerRegistry
             Schemes.Add(new DigestAuthentication(RequireEncryption, MinSecurityStrength, DigestAlgorithm.SHA256, Gateway.Domain, Users.Source));
             Schemes.Add(new DigestAuthentication(RequireEncryption, MinSecurityStrength, DigestAlgorithm.SHA3_256, Gateway.Domain, Users.Source));
 
-            this.server = new RegistryServerV2(Path.Combine(Gateway.AppDataFolder, "DockerRegistry"), Schemes.ToArray());
+            this.blobManager = new BlobManager(blobFolder);
+            this.manifestManager = new ManifestManager(this.blobManager);
+
+            this.server = new RegistryServerV2(dockerRegistryFolder, this.blobManager, this.manifestManager, Schemes.ToArray());
             Gateway.HttpServer?.Register(this.server);
 
             this.liveStorageView = new LiveStorageView("/DockerRegistry/live-storage-view");
@@ -159,6 +170,9 @@ namespace TAG.Service.DockerRegistry
                 this.server.Dispose();
                 this.server = null;
             }
+
+            this.manifestManager = null;
+            this.blobManager = null;
 
             if (!(this.liveStorageView is null))
             {

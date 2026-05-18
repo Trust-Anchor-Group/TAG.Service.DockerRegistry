@@ -75,7 +75,6 @@
 	<ItemGroup>
 		<!-- TODO: ask if i should use package reference -->
 		<ProjectReference Include="..\TAG.Networking.DockerRegistry\TAG.Networking.DockerRegistry.csproj" />
-		<ProjectReference Include="..\TAG.Service.DockerRegistry.Script\TAG.Service.DockerRegistry.Script.csproj" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">

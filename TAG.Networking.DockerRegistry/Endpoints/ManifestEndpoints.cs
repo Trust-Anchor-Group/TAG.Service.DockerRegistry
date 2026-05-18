@@ -99,6 +99,18 @@ namespace TAG.Networking.DockerRegistry.Endpoints
                         }), apiHeader);
                 }
             }
+            else if (Manifest is IIndexManifest IndexManifest)
+            {
+                foreach (IContentDescriptor ReferencedManifest in IndexManifest.GetManifests())
+                {
+                    if (await this.manifestManager.FindManifest(ReferencedManifest.Digest) is null)
+                        throw new BadRequestException(new DockerErrors(DockerErrorCode.MANIFEST_BLOB_UNKNOWN,
+                        "Referenced manifest unknown to registry.", new Dictionary<string, object>()
+                        {
+                                    { "digest", ReferencedManifest.Digest.ToString() }
+                        }), apiHeader);
+                }
+            }
 
             if (HashDigest.TryParseDigest(Reference, out HashDigest Digest))
             {
@@ -108,14 +120,10 @@ namespace TAG.Networking.DockerRegistry.Endpoints
             else
                 Tag = Reference;
 
-            DockerManifest Old = await Database.FindFirstIgnoreRest<DockerManifest>(new FilterAnd(
-                new FilterFieldEqualTo(nameof(DockerManifest.Digest), Manifest.Digest)
-            ));
-
             DockerActor Owner = await Repository.GetOwner();
             await using WritableStorageHandle StorageHandle = await Owner.GetWritableStorage();
 
-            if (Old is null && !await this.manifestManager.TryCreateManifest(Manifest, StorageHandle))
+            if (!await this.manifestManager.TryCreateManifest(Manifest, Owner.Guid, StorageHandle))
                 throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Storage quota exceeded."), apiHeader);
 
             if (!string.IsNullOrEmpty(Tag))

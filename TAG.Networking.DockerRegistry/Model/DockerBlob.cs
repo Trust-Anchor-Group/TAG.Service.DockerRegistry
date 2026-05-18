@@ -7,10 +7,8 @@ namespace TAG.Networking.DockerRegistry.Model
     /// <summary>
     /// A Docker BLOB reference
     /// </summary>
-    [CollectionName("DockerBlobs")]
-    [TypeName(TypeNameSerialization.None)]
-    [Index("Digest")]
-    public class DockerBlob : ReferenceCounter, IComparable
+    [TypeName(TypeNameSerialization.FullName)]
+    public class DockerBlob : ReferenceCounted, IComparable
     {
         /// <summary>
         /// A Docker BLOB reference
@@ -19,17 +17,6 @@ namespace TAG.Networking.DockerRegistry.Model
         {
 
         }
-
-        /// <summary>
-        /// Object ID
-        /// </summary>
-        [ObjectId]
-        public string ObjectId { get; set; }
-
-        /// <summary>
-        /// Digest
-        /// </summary>
-        public HashDigest Digest { get; set; }
 
         /// <summary>
         /// File path
@@ -44,8 +31,6 @@ namespace TAG.Networking.DockerRegistry.Model
         /// <summary>
         /// Amount of images using this blob
         /// </summary>
-        public int ReferenceCount { get; set; }
-
         public int CompareTo(object obj)
         {
             if (obj is DockerBlob Other)

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using TAG.Networking.DockerRegistry;
 using TAG.Networking.DockerRegistry.Model;
@@ -15,30 +14,30 @@ namespace TAG.Service.DockerRegistry.Script
     /// <summary>
     /// Creates a docker user.
     /// </summary>
-    public class DockerCreateUser : FunctionMultiVariate
+    public class DockerCreateOrganization : FunctionMultiVariate
     {
         /// <summary>
         /// Creates a docker user on the docker registry.
         /// </summary>
-        /// <param name="AccountName">Name of the broker account owning the docker user</param>
+        /// <param name="OrganizationName">Name of the broker account owning the docker user</param>
         /// <param name="MaxStorage">Max storage of unique blob storage</param>
         /// <param name="Start">Start position in script expression.</param>
         /// <param name="Length">Length of expression covered by node.</param>
         /// <param name="Expression">Expression.</param>
-        public DockerCreateUser(ScriptNode AccountName, ScriptNode MaxStorage, int Start, int Length, Expression Expression)
-            : base(new ScriptNode[] { AccountName, MaxStorage }, argumentTypes2Normal, Start, Length, Expression)
+        public DockerCreateOrganization(ScriptNode OrganizationName, ScriptNode MaxStorage, int Start, int Length, Expression Expression)
+            : base(new ScriptNode[] { OrganizationName, MaxStorage }, argumentTypes2Normal, Start, Length, Expression)
         {
         }
 
         /// <summary>
         /// Name of the function
         /// </summary>
-        public override string FunctionName => "DockerCreateUser";
+        public override string FunctionName => "DockerCreateOrganization";
 
         /// <summary>
         /// Name of the function
         /// </summary>
-        public override string[] DefaultArgumentNames => new string[] { "Account Name", "Max storage (bytes)", };
+        public override string[] DefaultArgumentNames => new string[] { "Organization Name", "Max storage (bytes)", };
 
         /// <summary>
         /// Evaluates the function.
@@ -72,9 +71,9 @@ namespace TAG.Service.DockerRegistry.Script
 
             long MaxStorage = (long)MaxStorageValue;
 
-            DockerUser NewUser = new DockerUser()
+            DockerOrganization NewOrganization = new DockerOrganization()
             {
-                AccountName = Name,
+                OrganizationName = Name,
                 Guid = Guid.NewGuid(),
                 StorageGuid = Guid.NewGuid(),
             };
@@ -82,15 +81,15 @@ namespace TAG.Service.DockerRegistry.Script
             DockerStorage Storage = new DockerStorage()
             {
                 MaxStorage = MaxStorage,
-                Guid = NewUser.StorageGuid,
-                BlobCounter = new ReferenceCounter[] { },
+                Guid = NewOrganization.StorageGuid,
+                BlobCounter = new DigestReferenceCounter[] { },
                 UsedStorage = 0
             };
 
             await Database.Insert(Storage);
-            await Database.Insert(NewUser);
+            await Database.Insert(NewOrganization);
 
-            return new ObjectValue(NewUser);
+            return new ObjectValue(NewOrganization);
         }
     }
 }

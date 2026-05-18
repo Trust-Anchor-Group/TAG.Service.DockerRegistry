@@ -27,6 +27,16 @@ if exists(Posted) then
 		TemporaryRedirect("Repositories.md");
     );
 
+    // delete image reference
+    if Posted matches { "deleteImage": Bool(PDeleteImage), "tag": String(PTag) } and PDeleteImage then
+    (
+        DockerDashboardAssertPermisions(Repo, "DockerRegistry.Delete");
+        if DockerDeleteImageReference(Repo, PTag) then
+            ]] +> Deleted image reference ((Repo.RepositoryName)):((PTag)) [[
+        else
+            ]] > No image reference with tag ((PTag)) exists [[;
+    );
+
     // update visibility
     if Posted matches { "setVisibility": Bool(PSetVisibility), "visibility": PVisibility } then (
         DockerDashboardAssertPermisions(Repo, "DockerRegistry.Update");
@@ -134,25 +144,53 @@ if exists(Posted) then
 ## Images
 
 {{
+CanDeleteImages:=DockerDashboardHasPermisions(Repo, "DockerRegistry.Delete");
+
 PrepareTable(()->(
     Page.Order:="Tag";
     Repo.GetManifests()
 ));
 }}
 
-| {{Header("Name", "Name")}} | {{Header("Tag", "Tag")}} | {{Header("Digest", "Digest")}} | {{Header("Size", "Size")}} |
-|---|---|---|---|
+<table>
+    <thead>
+        <tr>
+            <th>{{Header("Name", "Name")}}</th>
+            <th>{{Header("Tag", "Tag")}}</th>
+            <th>{{Header("Digest", "Digest")}}</th>
+            <th>{{Header("Size", "Size")}}</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
 {{
 foreach Image in Page.Table do
 (
-    ]]| ((Image.RepositoryName)):((Image.Tag)) [[;
-    ]]| ((Image.Tag)) [[;
-    ]]| ((Image.Digest)) [[;
-    ]]| ((ToMetricBytes(Image.Size);)) [[;
-    ]]| 
-[[;
+    ]]
+        <tr>
+            <td>((Image.RepositoryName)):((Image.Tag))</td>
+            <td>((Image.Tag))</td>
+            <td>((Image.Digest))</td>
+            <td>((ToMetricBytes(Image.Size);))</td>
+            <td>
+    [[;
+    if CanDeleteImages and not (Image.Tag = "_") then (
+        ]]
+                <form method="POST" onsubmit="DockerAreYouSure(event, 'Are you sure you want to delete this image reference?')">
+                    <input name="tag" value="((Image.Tag))" hidden>
+                    <input name="deleteImage" value="true" hidden>
+                    <button class="negButton">Delete</button>
+                </form>
+        [[;
+    );
+    ]]
+            </td>
+        </tr>
+    [[;
 )
 }}
+    </tbody>
+</table>
 
 ============================================================================
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -58,15 +59,17 @@ namespace TAG.Networking.DockerRegistry
         /// Docker Registry API v2.
         /// </summary>
         /// <param name="DockerRegistryFolder">Docker Registry folder.</param>
+        /// <param name="BlobManager">Blob manager.</param>
+        /// <param name="ManifestManager">Manifest manager.</param>
         /// <param name="AuthenticationSchemes">Authentication schemes.</param>
-        public RegistryServerV2(string DockerRegistryFolder, params HttpAuthenticationScheme[] AuthenticationSchemes)
+        public RegistryServerV2(string DockerRegistryFolder, BlobManager BlobManager, ManifestManager ManifestManager, params HttpAuthenticationScheme[] AuthenticationSchemes)
             : base("/v2")
         {
             this.dockerRegistryFolder = DockerRegistryFolder;
             this.authenticationSchemes = AuthenticationSchemes;
 
-            this.blobManager = new BlobManager(BlobFolder);
-            this.manifestManager = new ManifestManager(this.blobManager);
+            this.blobManager = BlobManager;
+            this.manifestManager = ManifestManager;
 
             ISniffer[] Sniffers = new ISniffer[] { snifferProxy };
 
@@ -266,14 +269,12 @@ namespace TAG.Networking.DockerRegistry
             }
             catch (HttpException ex)
             {
-                if (ex.StatusCode >= 500)
-                    Log.Error(ex);
                 await Response.SendResponse(ex);
             }
             catch (Exception ex)
             {
-                Log.Error(ex);
-                await Response.SendResponse(ex);
+                Log.Exception(ex);
+                throw new InternalServerErrorException();
             }
         }
 
@@ -310,9 +311,14 @@ namespace TAG.Networking.DockerRegistry
 
                 throw new BadRequestException(new DockerErrors(DockerErrorCode.UNSUPPORTED, "The operation is unsupported."), apiHeader);
             }
-            catch (Exception ex)
+            catch (HttpException ex)
             {
                 await Response.SendResponse(ex);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception(ex);
+                throw new InternalServerErrorException();
             }
         }
 
@@ -357,9 +363,14 @@ namespace TAG.Networking.DockerRegistry
 
                 throw new BadRequestException(new DockerErrors(DockerErrorCode.UNSUPPORTED, "The operation is unsupported."), apiHeader);
             }
-            catch (Exception ex)
+            catch (HttpException ex)
             {
                 await Response.SendResponse(ex);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception(ex);
+                throw new InternalServerErrorException();
             }
         }
 
@@ -415,9 +426,14 @@ namespace TAG.Networking.DockerRegistry
 
                 throw new BadRequestException(new DockerErrors(DockerErrorCode.UNSUPPORTED, "The operation is unsupported."), apiHeader);
             }
-            catch (Exception ex)
+            catch (HttpException ex)
             {
                 await Response.SendResponse(ex);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception(ex);
+                throw new InternalServerErrorException();
             }
         }
 
@@ -475,9 +491,14 @@ namespace TAG.Networking.DockerRegistry
 
                 throw new BadRequestException(new DockerErrors(DockerErrorCode.UNSUPPORTED, "The operation is unsupported."), apiHeader);
             }
-            catch (Exception ex)
+            catch (HttpException ex)
             {
                 await Response.SendResponse(ex);
+            }
+            catch (Exception ex)
+            {
+                Log.Exception(ex);
+                throw new InternalServerErrorException();
             }
         }
 

@@ -6,10 +6,8 @@ namespace TAG.Networking.DockerRegistry.Model
     /// <summary>
     /// A Docker manifest
     /// </summary>
-    [CollectionName("DockerManifest")]
-    [TypeName(TypeNameSerialization.None)]
-    [Index("Digest")]
-    public sealed class DockerManifest : ReferenceCounter
+    [TypeName(TypeNameSerialization.FullName)]
+    public class DockerManifest : ReferenceCounted
     {
         /// <summary>
         /// A Docker Image reference
@@ -19,25 +17,9 @@ namespace TAG.Networking.DockerRegistry.Model
         }
 
         /// <summary>
-        /// Object ID
-        /// </summary>
-        [ObjectId]
-        public string ObjectId { get; set; }
-
-        /// <summary>
-        /// Manifest Digest
-        /// </summary>
-        public HashDigest Digest { get; set; }
-
-        /// <summary>
         /// Manifest Digest
         /// </summary>
         public IManifest Manifest { get; set; }
-
-        /// <summary>
-        /// How many tags and image indecies referencing this image exists
-        /// </summary>
-        public int ReferenceCount { get; set; }
 
         public long GetSize()
         {
