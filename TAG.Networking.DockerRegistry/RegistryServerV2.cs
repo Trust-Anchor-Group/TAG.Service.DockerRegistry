@@ -47,14 +47,14 @@ namespace TAG.Networking.DockerRegistry
 
         private readonly HttpAuthenticationScheme[] authenticationSchemes;
         private readonly string dockerRegistryFolder;
-        private BlobManager blobManager;
-        private ManifestManager manifestManager;
+        private readonly BlobManager blobManager;
+        private readonly ManifestManager manifestManager;
 
 
-        private ManifestEndpoints manifestEndpoints;
-        private BlobEndpoints blobEndpoints;
-        private BlobUploadEndpoints blobUploadEndpoints;
-        private TagsEndpoints tagsEndpoints;
+        private readonly ManifestEndpoints manifestEndpoints;
+        private readonly BlobEndpoints blobEndpoints;
+        private readonly BlobUploadEndpoints blobUploadEndpoints;
+        private readonly TagsEndpoints tagsEndpoints;
         /// <summary>
         /// Docker Registry API v2.
         /// </summary>
@@ -73,10 +73,10 @@ namespace TAG.Networking.DockerRegistry
 
             ISniffer[] Sniffers = new ISniffer[] { snifferProxy };
 
-            manifestEndpoints = new ManifestEndpoints(this.manifestManager, this.blobManager, Sniffers);
-            blobEndpoints = new BlobEndpoints(this.manifestManager, this.blobManager, Sniffers);
-            blobUploadEndpoints = new BlobUploadEndpoints(this.dockerRegistryFolder, this.manifestManager, this.blobManager, Sniffers);
-            tagsEndpoints = new TagsEndpoints(this.manifestManager, this.blobManager, Sniffers);
+            this.manifestEndpoints = new ManifestEndpoints(this.manifestManager, this.blobManager, Sniffers);
+            this.blobEndpoints = new BlobEndpoints(this.manifestManager, this.blobManager, Sniffers);
+            this.blobUploadEndpoints = new BlobUploadEndpoints(this.dockerRegistryFolder, this.manifestManager, this.blobManager, Sniffers);
+            this.tagsEndpoints = new TagsEndpoints(this.manifestManager, this.blobManager, Sniffers);
         }
 
         /// <summary>
@@ -169,7 +169,7 @@ namespace TAG.Networking.DockerRegistry
         /// <param name="Response">Response object.</param>
         public async Task GET(HttpRequest Request, HttpResponse Response)
         {
-            await GET(Request, Response, null);
+            await this.GET(Request, Response, null);
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ namespace TAG.Networking.DockerRegistry
                 if (ApiResource == "/_catalog")
                 {
                     List<DockerRepository> ListableRepositories = new List<DockerRepository>();
-                    DockerActor[] Actors = await GetActors(Request);
+                    DockerActor[] Actors = await this.GetActors(Request);
 
                     foreach (DockerActor DockerActor in Actors)
                     {
@@ -236,13 +236,13 @@ namespace TAG.Networking.DockerRegistry
                     return;
                 }
 
-                DockerRepository Repository = await GetRepository(Request, RepositoryName);
+                DockerRepository Repository = await this.GetRepository(Request, RepositoryName);
 
                 DockerActor Actor;
                 if (Repository == null)
-                    (Actor, Repository) = await GetEffectiveActor(Request, RepositoryName);
+                    (Actor, Repository) = await this.GetEffectiveActor(Request, RepositoryName);
                 else
-                    Actor = await GetEffectiveActor(Request, Repository);
+                    Actor = await this.GetEffectiveActor(Request, Repository);
 
                 if (Repository == null)
                     throw new NotFoundException(new DockerErrors(DockerErrorCode.NAME_UNKNOWN, "Repository name not known to registry."), apiHeader);
@@ -250,16 +250,16 @@ namespace TAG.Networking.DockerRegistry
                 switch (ApiResource)
                 {
                     case "/blobs":
-                        await blobEndpoints.GET(Request, Response, Interval, Actor, Repository, ReferenceString);
+                        await this.blobEndpoints.GET(Request, Response, Interval, Actor, Repository, ReferenceString);
                         return;
                     case "/blobs/uploads":
-                        await blobUploadEndpoints.GET(Request, Response, Interval, Actor, Repository, ReferenceString);
+                        await this.blobUploadEndpoints.GET(Request, Response, Interval, Actor, Repository, ReferenceString);
                         return;
                     case "/tags/list":
-                        await tagsEndpoints.GET(Request, Response, Actor, Repository, ReferenceString);
+                        await this.tagsEndpoints.GET(Request, Response, Actor, Repository, ReferenceString);
                         return;
                     case "/manifests":
-                        await manifestEndpoints.GET(Request, Response, Actor, Repository, ReferenceString);
+                        await this.manifestEndpoints.GET(Request, Response, Actor, Repository, ReferenceString);
                         return;
                     default:
                         throw new BadRequestException(new DockerErrors(DockerErrorCode.UNSUPPORTED, "The operation is unsupported."), apiHeader);
@@ -290,12 +290,12 @@ namespace TAG.Networking.DockerRegistry
                 SetApiHeader(Response);
 
                 Prepare(Request, out string RepositoryName, out string ApiResource, out string ReferenceString);
-                DockerRepository Repository = await GetRepository(Request, RepositoryName);
+                DockerRepository Repository = await this.GetRepository(Request, RepositoryName);
                 DockerActor Actor;
                 if (Repository == null)
-                    (Actor, Repository) = await GetEffectiveActor(Request, RepositoryName);
+                    (Actor, Repository) = await this.GetEffectiveActor(Request, RepositoryName);
                 else
-                    Actor = await GetEffectiveActor(Request, Repository);
+                    Actor = await this.GetEffectiveActor(Request, Repository);
 
                 if (Repository == null)
                     throw new NotFoundException(new DockerErrors(DockerErrorCode.NAME_UNKNOWN, "Repository name not known to registry."), apiHeader);
@@ -303,7 +303,7 @@ namespace TAG.Networking.DockerRegistry
                 switch (ApiResource)
                 {
                     case "/blobs/uploads":
-                        await blobUploadEndpoints.POST(Request, Response, Actor, Repository, ReferenceString);
+                        await this.blobUploadEndpoints.POST(Request, Response, Actor, Repository, ReferenceString);
                         return;
                     default:
                         throw new BadRequestException(new DockerErrors(DockerErrorCode.UNSUPPORTED, "The operation is unsupported."), apiHeader);
@@ -334,12 +334,12 @@ namespace TAG.Networking.DockerRegistry
                 SetApiHeader(Response);
 
                 Prepare(Request, out string RepositoryName, out string ApiResource, out string ReferenceString);
-                DockerRepository Repository = await GetRepository(Request, RepositoryName);
+                DockerRepository Repository = await this.GetRepository(Request, RepositoryName);
                 DockerActor Actor;
                 if (Repository == null)
-                    (Actor, Repository) = await GetEffectiveActor(Request, RepositoryName);
+                    (Actor, Repository) = await this.GetEffectiveActor(Request, RepositoryName);
                 else
-                    Actor = await GetEffectiveActor(Request, Repository);
+                    Actor = await this.GetEffectiveActor(Request, Repository);
 
                 if (Repository == null)
                     throw new NotFoundException(new DockerErrors(DockerErrorCode.NAME_UNKNOWN, "Repository name not known to registry."), apiHeader);
@@ -347,13 +347,13 @@ namespace TAG.Networking.DockerRegistry
                 switch (ApiResource)
                 {
                     case "/blobs/uploads":
-                        await blobUploadEndpoints.DELETE(Request, Response, Actor, Repository, ReferenceString);
+                        await this.blobUploadEndpoints.DELETE(Request, Response, Actor, Repository, ReferenceString);
                         return;
                     case "/blobs":
-                        await blobEndpoints.DELETE(Request, Response, Actor, Repository, ReferenceString);
+                        await this.blobEndpoints.DELETE(Request, Response, Actor, Repository, ReferenceString);
                         return;
                     case "/manifests":
-                        await manifestEndpoints.DELETE(Request, Response, Actor, Repository, ReferenceString);
+                        await this.manifestEndpoints.DELETE(Request, Response, Actor, Repository, ReferenceString);
                         return;
                     case "/tags":
                     // TODO
@@ -397,12 +397,12 @@ namespace TAG.Networking.DockerRegistry
                 SetApiHeader(Response);
 
                 Prepare(Request, out string RepositoryName, out string ApiResource, out string ReferenceString);
-                DockerRepository Repository = await GetRepository(Request, RepositoryName);
+                DockerRepository Repository = await this.GetRepository(Request, RepositoryName);
                 DockerActor Actor;
                 if (Repository == null)
-                    (Actor, Repository) = await GetEffectiveActor(Request, RepositoryName);
+                    (Actor, Repository) = await this.GetEffectiveActor(Request, RepositoryName);
                 else
-                    Actor = await GetEffectiveActor(Request, Repository);
+                    Actor = await this.GetEffectiveActor(Request, Repository);
 
                 if (Repository == null)
                     throw new NotFoundException(new DockerErrors(DockerErrorCode.NAME_UNKNOWN, "Repository name not known to registry."), apiHeader);
@@ -410,7 +410,7 @@ namespace TAG.Networking.DockerRegistry
                 switch (ApiResource)
                 {
                     case "/blobs/uploads":
-                        await blobUploadEndpoints.PATCH(Request, Response, Interval, Actor, Repository, ReferenceString);
+                        await this.blobUploadEndpoints.PATCH(Request, Response, Interval, Actor, Repository, ReferenceString);
                         return;
                     case "/blobs":
                     // TODO
@@ -461,14 +461,14 @@ namespace TAG.Networking.DockerRegistry
 
                 Prepare(Request, out string RepositoryName, out string ApiResource, out string ReferenceString);
 
-                DockerRepository Repository = await GetRepository(Request, RepositoryName);
+                DockerRepository Repository = await this.GetRepository(Request, RepositoryName);
                 DockerActor Actor;
                 if (Repository == null)
                 {
-                    (Actor, Repository) = await GetEffectiveActor(Request, RepositoryName);
+                    (Actor, Repository) = await this.GetEffectiveActor(Request, RepositoryName);
                 }
                 else
-                    Actor = await GetEffectiveActor(Request, Repository);
+                    Actor = await this.GetEffectiveActor(Request, Repository);
 
                 if (Repository == null)
                     throw new NotFoundException(new DockerErrors(DockerErrorCode.NAME_UNKNOWN, "Repository name not known to registry."), apiHeader);
@@ -476,10 +476,10 @@ namespace TAG.Networking.DockerRegistry
                 switch (ApiResource)
                 {
                     case "/blobs/uploads":
-                        await blobUploadEndpoints.PUT(Request, Response, Interval, Actor, Repository, ReferenceString);
+                        await this.blobUploadEndpoints.PUT(Request, Response, Interval, Actor, Repository, ReferenceString);
                         return;
                     case "/manifests":
-                        await manifestEndpoints.PUT(Request, Response, Actor, Repository, ReferenceString);
+                        await this.manifestEndpoints.PUT(Request, Response, Actor, Repository, ReferenceString);
                         return;
                     case "/_catalog":
                     // TODO
@@ -530,13 +530,13 @@ namespace TAG.Networking.DockerRegistry
 
             List<DockerActor> Actors = new List<DockerActor>();
 
-            DockerUser User = await GetDockerUser(Request.User);
+            DockerUser User = await this.GetDockerUser(Request.User);
             if (!(User is null))
                 Actors.Add(User);
 
             if (Request.User is ILegalIdentityUser LegalIdentityUser)
             {
-                DockerOrganization Organization = await GetOrganizationActor(LegalIdentityUser);
+                DockerOrganization Organization = await this.GetOrganizationActor(LegalIdentityUser);
                 if (!(Organization is null))
                     Actors.Add(Organization);
             }
@@ -546,7 +546,7 @@ namespace TAG.Networking.DockerRegistry
 
         private async Task<DockerActor> GetEffectiveActor(HttpRequest Request, DockerRepository Repository)
         {
-            DockerActor[] Actors = await GetActors(Request);
+            DockerActor[] Actors = await this.GetActors(Request);
 
             if (Actors.Length == 0)
                 throw new ForbiddenException(new DockerErrors(DockerErrorCode.DENIED, "Requested access to the resource is denied."), apiHeader);
@@ -575,7 +575,7 @@ namespace TAG.Networking.DockerRegistry
         /// <exception cref="ForbiddenException"></exception>
         private async Task<(DockerActor, DockerRepository)> GetEffectiveActor(HttpRequest Request, CaseInsensitiveString RepositoryName)
         {
-            List<DockerActor> Actors = (await GetActors(Request)).ToList();
+            List<DockerActor> Actors = (await this.GetActors(Request)).ToList();
 
             for (int i = Actors.Count() - 1; i >= 0; i--)
             {
@@ -590,7 +590,7 @@ namespace TAG.Networking.DockerRegistry
 
                 if (Prev is null)
                 {
-                    DockerRepository Repository = await TryAutoCreateRepository(Actor, RepositoryName);
+                    DockerRepository Repository = await this.TryAutoCreateRepository(Actor, RepositoryName);
                     if (!(Repository is null))
                         return (Actor, Repository);
                 }
@@ -789,7 +789,7 @@ namespace TAG.Networking.DockerRegistry
                     if (Pagination.TryGetVariable("N", out Variable v))
                     {
                         sb.Append("n=");
-                        sb.Append(Expression.ToString(v.ValueObject));
+                        sb.Append(Expression.ToExpressionString(v.ValueObject));
                         sb.Append('&');
                     }
 
@@ -866,7 +866,7 @@ namespace TAG.Networking.DockerRegistry
             for (int i = 0; i < DanglingBlobs.Length; i++)
             {
                 await Database.Delete(DanglingBlobs[i]);
-                await blobManager.DeleteBlob(DanglingBlobs[i].Digest);
+                await this.blobManager.DeleteBlob(DanglingBlobs[i].Digest);
             }
         }
 

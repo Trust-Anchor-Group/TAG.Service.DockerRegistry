@@ -18,13 +18,13 @@ namespace TAG.Networking.DockerRegistry.Model
         // Standard dispose pattern with finalizer to avoid leaving semaphore held.
         public void Dispose()
         {
-            Dispose(true);
+            this.Dispose(true);
             GC.SuppressFinalize(this);
         }
 
         private void Dispose(bool disposing)
         {
-            Waher.Runtime.Threading.Semaphore s = Interlocked.Exchange(ref semaphore, null);
+            Waher.Runtime.Threading.Semaphore s = Interlocked.Exchange(ref this.semaphore, null);
             s?.Dispose();
         }
 
